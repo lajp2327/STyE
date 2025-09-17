@@ -1,0 +1,27 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:sistema_tickets_edis/app/app.dart';
+import 'package:sistema_tickets_edis/app/providers.dart';
+import 'package:sistema_tickets_edis/core/notifications/local_notification_service.dart';
+import 'package:sistema_tickets_edis/core/pdf/alta_document_service.dart';
+import 'package:sistema_tickets_edis/data/local/database/app_database.dart';
+
+Future<void> bootstrap() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final AppDatabase database = AppDatabase();
+  final LocalNotificationService notifications = LocalNotificationService();
+  await notifications.initialize();
+  final AltaDocumentService altaService = AltaDocumentService();
+
+  runApp(
+    ProviderScope(
+      overrides: <Override>[
+        appDatabaseProvider.overrideWithValue(database),
+        localNotificationServiceProvider.overrideWithValue(notifications),
+        altaDocumentServiceProvider.overrideWithValue(altaService),
+      ],
+      child: const TicketSystemApp(),
+    ),
+  );
+}
