@@ -15,8 +15,8 @@ class SettingsPage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: const EmptyState(
-              message:
-                  'Próximamente podrás configurar preferencias y notificaciones.',
+              title: 'Ajustes en desarrollo',
+              message: 'Próximamente podrás configurar preferencias y notificaciones.',
               icon: Icons.tune,
             ),
           ),
