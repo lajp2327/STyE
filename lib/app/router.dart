@@ -25,38 +25,51 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       floatingActionButton: navigationShell.currentIndex == 0
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go('/tickets/new'),
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo ticket'),
+          ? SafeArea(
+              minimum: const EdgeInsets.only(bottom: 16, right: 16),
+              top: false,
+              child: FloatingActionButton.extended(
+                onPressed: () => context.go('/tickets/new'),
+                icon: const Icon(
+                  Icons.add,
+                  semanticLabel: 'Crear ticket',
+                ),
+                label: const Text('Nuevo ticket'),
+              ),
             )
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (int index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.confirmation_number_outlined),
-            selectedIcon: Icon(Icons.confirmation_number),
-            label: 'Tickets',
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: NavigationBar(
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: (int index) {
+              navigationShell.goBranch(
+                index,
+                initialLocation: index == navigationShell.currentIndex,
+              );
+            },
+            destinations: const <NavigationDestination>[
+              NavigationDestination(
+                icon: Icon(Icons.confirmation_number_outlined),
+                selectedIcon: Icon(Icons.confirmation_number),
+                label: 'Tickets',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.insert_chart_outlined),
+                selectedIcon: Icon(Icons.insert_chart),
+                label: 'Reportes',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'Ajustes',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.insert_chart_outlined),
-            selectedIcon: Icon(Icons.insert_chart),
-            label: 'Reportes',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Ajustes',
-          ),
-        ],
+        ),
       ),
     );
   }

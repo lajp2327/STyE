@@ -36,7 +36,7 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
     super.initState();
     _subscription = ref.listenManual<TicketFormState>(
       ticketFormControllerProvider,
-      (prev, next) {
+      (TicketFormState? prev, TicketFormState next) {
         if (!mounted) return;
         if (next.createdTicket != null &&
             next.createdTicket != prev?.createdTicket) {
@@ -45,7 +45,6 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
           context.go('/tickets/${ticket.id}');
         }
       },
-      // fireImmediately: true, // ← actívalo si quieres disparar el listener con el estado actual
     );
   }
 
@@ -64,102 +63,136 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
     final TicketFormController controller = ref.read(
       ticketFormControllerProvider.notifier,
     );
+    final ThemeData theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Registrar ticket')),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: Column(
           children: <Widget>[
-            if (state.errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ErrorCard(
-                  message: state.errorMessage!,
-                  onDismiss: controller.clearError,
-                ),
-              ),
-            if (_formError != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ErrorCard(
-                  message: _formError!,
-                  onDismiss: () => setState(() => _formError = null),
-                ),
-              ),
-            DropdownButtonFormField<TicketCategory>(
-              value: state.category,
-              decoration: const InputDecoration(
-                labelText: 'Categoría',
-                border: OutlineInputBorder(),
-              ),
-              items: TicketCategory.values
-                  .map(
-                    (TicketCategory category) =>
-                        DropdownMenuItem<TicketCategory>(
-                      value: category,
-                      child: Text(category.label),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                children: <Widget>[
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: Column(
+                      children: <Widget>[
+                        if (state.errorMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ErrorCard(
+                              message: state.errorMessage!,
+                              onDismiss: controller.clearError,
+                            ),
+                          ),
+                        if (_formError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ErrorCard(
+                              message: _formError!,
+                              onDismiss: () => setState(() => _formError = null),
+                            ),
+                          ),
+                      ],
                     ),
-                  )
-                  .toList(),
-              onChanged: (TicketCategory? value) {
-                if (value != null) {
-                  controller.setCategory(value);
-                  if (_formError != null) {
-                    setState(() => _formError = null);
-                  }
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Título',
-                border: OutlineInputBorder(),
+                  ),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text('Información general', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<TicketCategory>(
+                            value: state.category,
+                            decoration: const InputDecoration(
+                              labelText: 'Categoría',
+                            ),
+                            items: TicketCategory.values
+                                .map(
+                                  (TicketCategory category) =>
+                                      DropdownMenuItem<TicketCategory>(
+                                    value: category,
+                                    child: Text(category.label),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (TicketCategory? value) {
+                              if (value != null) {
+                                controller.setCategory(value);
+                                if (_formError != null) {
+                                  setState(() => _formError = null);
+                                }
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _titleController,
+                            decoration: const InputDecoration(
+                              labelText: 'Título',
+                            ),
+                            validator: (String? value) =>
+                                (value == null || value.isEmpty) ? 'Ingresa un título' : null,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _descriptionController,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Descripción',
+                            ),
+                            validator: (String? value) => (value == null || value.isEmpty)
+                                ? 'Describe el requerimiento'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _requesterController,
+                            decoration: const InputDecoration(
+                              labelText: 'Solicitante',
+                            ),
+                            validator: (String? value) => (value == null || value.isEmpty)
+                                ? 'Indica el solicitante'
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (state.category == TicketCategory.altaNoParteRmFg) ...<Widget>[
+                    const SizedBox(height: 20),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: _buildAltaSection(ref),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                ],
               ),
-              validator: (String? value) =>
-                  (value == null || value.isEmpty) ? 'Ingresa un título' : null,
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Descripción',
-                border: OutlineInputBorder(),
+            SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton.icon(
+                onPressed: state.isSubmitting
+                    ? null
+                    : () => _handleSubmit(controller, state),
+                icon: state.isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send),
+                label: const Text('Enviar ticket'),
               ),
-              validator: (String? value) => (value == null || value.isEmpty)
-                  ? 'Describe el requerimiento'
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _requesterController,
-              decoration: const InputDecoration(
-                labelText: 'Solicitante',
-                border: OutlineInputBorder(),
-              ),
-              validator: (String? value) => (value == null || value.isEmpty)
-                  ? 'Indica el solicitante'
-                  : null,
-            ),
-            const SizedBox(height: 24),
-            if (state.category == TicketCategory.altaNoParteRmFg)
-              _buildAltaSection(ref),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: state.isSubmitting
-                  ? null
-                  : () => _handleSubmit(controller, state),
-              icon: state.isSubmitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send),
-              label: const Text('Enviar ticket'),
             ),
           ],
         ),
@@ -332,12 +365,10 @@ class _CatalogDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return asyncValue.when(
-      data: (List<CatalogEntry> entries) =>
-          DropdownButtonFormField<CatalogEntry>(
+      data: (List<CatalogEntry> entries) => DropdownButtonFormField<CatalogEntry>(
         value: value,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
         ),
         items: entries
             .map(

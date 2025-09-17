@@ -8,6 +8,7 @@ import 'package:sistema_tickets_edis/domain/entities/ticket_event.dart';
 import 'package:sistema_tickets_edis/domain/entities/technician.dart';
 import 'package:sistema_tickets_edis/domain/services/ticket_workflow_service.dart';
 import 'package:sistema_tickets_edis/features/ticket_detail/application/ticket_detail_controller.dart';
+import 'package:sistema_tickets_edis/features/shared/presentation/widgets/empty_state.dart';
 import 'package:sistema_tickets_edis/features/shared/presentation/widgets/error_card.dart';
 import 'package:sistema_tickets_edis/features/shared/presentation/widgets/shimmer_placeholder.dart';
 import 'package:sistema_tickets_edis/features/shared/presentation/widgets/status_chip.dart';
@@ -44,27 +45,31 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text('Ticket #${widget.ticketId}')),
-      body: state.ticket.when(
-        data: (Ticket ticket) => _TicketDetailBody(
-          ticket: ticket,
-          history: state.history,
-          controller: controller,
-          workflow: workflow,
-          techniciansAsync: techniciansAsync,
-          onChangeStatus: (TicketStatus status) =>
-              _onChangeStatus(ticket, status, controller),
-          onAssignTechnician: (Technician technician) =>
-              controller.assignTechnician(technician),
-          onAddComment: (String message) => controller.addComment(message),
-          onGenerateDocuments:
-              ticket.isAltaRmFg ? () => _onGenerateDocuments(controller) : null,
-          errorMessage: state.errorMessage,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: state.ticket.when(
+          data: (Ticket ticket) => _TicketDetailBody(
+            key: ValueKey<int>(ticket.id),
+            ticket: ticket,
+            history: state.history,
+            controller: controller,
+            workflow: workflow,
+            techniciansAsync: techniciansAsync,
+            onChangeStatus: (TicketStatus status) =>
+                _onChangeStatus(ticket, status, controller),
+            onAssignTechnician: (Technician technician) =>
+                controller.assignTechnician(technician),
+            onAddComment: (String message) => controller.addComment(message),
+            onGenerateDocuments:
+                ticket.isAltaRmFg ? () => _onGenerateDocuments(controller) : null,
+            errorMessage: state.errorMessage,
+          ),
+          error: (Object error, StackTrace stackTrace) => Padding(
+            padding: const EdgeInsets.all(16),
+            child: ErrorCard(message: 'Error al cargar el ticket: $error'),
+          ),
+          loading: () => const _TicketDetailShimmer(),
         ),
-        error: (Object error, StackTrace stackTrace) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: ErrorCard(message: 'Error al cargar el ticket: $error'),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -84,7 +89,6 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
             controller: commentController,
             decoration: const InputDecoration(
               labelText: 'Comentario',
-              border: OutlineInputBorder(),
             ),
             minLines: 1,
             maxLines: 3,
@@ -168,6 +172,7 @@ class _TicketDetailBody extends StatelessWidget {
     required this.onAddComment,
     this.errorMessage,
     this.onGenerateDocuments,
+    super.key,
   });
 
   final Ticket ticket;
@@ -186,18 +191,22 @@ class _TicketDetailBody extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final TextTheme textTheme = theme.textTheme;
     final ColorScheme scheme = theme.colorScheme;
+    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
     final Iterable<TicketStatus> nextStatuses = workflow.nextOptions(
       ticket.status,
     );
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: <Widget>[
         if (errorMessage != null)
-          ErrorCard(message: errorMessage!, onDismiss: controller.clearError),
-        Card.outlined(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ErrorCard(message: errorMessage!, onDismiss: controller.clearError),
+          ),
+        Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -205,43 +214,91 @@ class _TicketDetailBody extends StatelessWidget {
                   ticket.title,
                   style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.1,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(ticket.description),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
-                  runSpacing: 4,
+                  runSpacing: 8,
                   children: <Widget>[
                     StatusChip(status: ticket.status),
-                    Chip(label: Text(ticket.category.label)),
-                    Chip(label: Text('Solicita: ${ticket.requesterName}')),
+                    AbsorbPointer(
+                      child: AssistChip(
+                        onPressed: () {},
+                        icon: const Icon(Icons.category_outlined),
+                        label: Text(ticket.category.label),
+                      ),
+                    ),
+                    AbsorbPointer(
+                      child: InputChip(
+                        onPressed: () {},
+                        avatar: const Icon(Icons.person_outline, size: 18),
+                        label: Text(ticket.requesterName),
+                      ),
+                    ),
                     if (ticket.assignedTechnician != null)
-                      Chip(
-                        label: Text(
-                          'Técnico: ${ticket.assignedTechnician!.name}',
+                      AbsorbPointer(
+                        child: InputChip(
+                          onPressed: () {},
+                          avatar: const Icon(Icons.engineering, size: 18),
+                          label: Text(ticket.assignedTechnician!.name),
                         ),
                       ),
-                    if (ticket.isAltaRmFg) const Chip(label: Text('RM/FG')),
+                    if (ticket.isAltaRmFg)
+                      AbsorbPointer(
+                        child: AssistChip(
+                          onPressed: () {},
+                          icon: const Icon(Icons.picture_as_pdf_outlined),
+                          label: const Text('Alta RM/FG'),
+                        ),
+                      ),
+                  ],
+                ),
+                const Divider(height: 32),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _DetailTile(
+                        icon: Icons.confirmation_number_outlined,
+                        label: 'Folio',
+                        value: '#${ticket.folio}',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DetailTile(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Creado',
+                        value:
+                            '${localizations.formatMediumDate(ticket.createdAt)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(ticket.createdAt))}',
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Creado: ${MaterialLocalizations.of(context).formatMediumDate(ticket.createdAt)}',
-                ),
                 if (ticket.resolvedAt != null)
-                  Text(
-                    'Resuelto: ${MaterialLocalizations.of(context).formatMediumDate(ticket.resolvedAt!)}',
+                  _DetailTile(
+                    icon: Icons.check_circle_outline,
+                    label: 'Resuelto',
+                    value:
+                        '${localizations.formatMediumDate(ticket.resolvedAt!)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(ticket.resolvedAt!))}',
                   ),
+                if (ticket.resolvedAt != null) const SizedBox(height: 12),
+                Text(
+                  ticket.description,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
-        Card.outlined(
+        Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -252,9 +309,10 @@ class _TicketDetailBody extends StatelessWidget {
                   runSpacing: 12,
                   children: <Widget>[
                     ...nextStatuses.map(
-                      (TicketStatus status) => FilledButton(
+                      (TicketStatus status) => FilledButton.icon(
                         onPressed: () => onChangeStatus(status),
-                        child: Text(status.label),
+                        icon: Icon(_statusActionIcon(status)),
+                        label: Text(status.label),
                       ),
                     ),
                     techniciansAsync.when(
@@ -290,43 +348,10 @@ class _TicketDetailBody extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         Text('Histórico', style: textTheme.titleMedium),
         const SizedBox(height: 8),
-        history.when(
-          data: (List<TicketEvent> events) => events.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: Text('Sin eventos registrados.')),
-                )
-              : Column(
-                  children: events
-                      .map(
-                        (TicketEvent event) => Card.outlined(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: scheme.primaryContainer,
-                              child: Icon(
-                                _eventIcon(event.type),
-                                color: scheme.onPrimaryContainer,
-                              ),
-                            ),
-                            title: Text(event.message),
-                            subtitle: Text(
-                              '${MaterialLocalizations.of(context).formatMediumDate(event.createdAt)} · ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(event.createdAt))}\nPor: ${event.author}',
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (Object error, StackTrace stackTrace) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: ErrorCard(message: 'Error histórico: $error'),
-          ),
-        ),
+        _TicketHistory(history: history),
       ],
     );
   }
@@ -342,7 +367,6 @@ class _TicketDetailBody extends StatelessWidget {
             controller: controller,
             maxLines: 3,
             decoration: const InputDecoration(
-              border: OutlineInputBorder(),
               labelText: 'Comentario',
             ),
           ),
@@ -371,18 +395,23 @@ class _TicketDetailBody extends StatelessWidget {
   ) async {
     final Technician? technician = await showModalBottomSheet<Technician>(
       context: context,
+      showDragHandle: true,
       builder: (BuildContext context) {
-        return ListView(
-          children: technicians
-              .map(
-                (Technician technician) => ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(technician.name),
-                  subtitle: Text(technician.email),
-                  onTap: () => Navigator.of(context).pop(technician),
-                ),
-              )
-              .toList(),
+        return SafeArea(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: technicians.length,
+            separatorBuilder: (_, __) => const Divider(),
+            itemBuilder: (BuildContext context, int index) {
+              final Technician tech = technicians[index];
+              return ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(tech.name),
+                subtitle: Text(tech.email),
+                onTap: () => Navigator.of(context).pop(tech),
+              );
+            },
+          ),
         );
       },
     );
@@ -392,26 +421,163 @@ class _TicketDetailBody extends StatelessWidget {
   }
 }
 
+class _TicketHistory extends StatelessWidget {
+  const _TicketHistory({required this.history});
+
+  final AsyncValue<List<TicketEvent>> history;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
+    return history.when(
+      data: (List<TicketEvent> events) {
+        if (events.isEmpty) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+              child: EmptyState(
+                title: 'Sin eventos registrados',
+                message: 'Los movimientos del ticket aparecerán aquí.',
+                icon: Icons.timeline_outlined,
+              ),
+            ),
+          );
+        }
+        return Card(
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: events.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (BuildContext context, int index) {
+              final TicketEvent event = events[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    _eventIcon(event.type),
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                title: Text(event.message),
+                subtitle: Text(
+                  '${localizations.formatMediumDate(event.createdAt)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(event.createdAt))}\nPor: ${event.author}',
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: ShimmerPlaceholder(height: 160),
+        ),
+      ),
+      error: (Object error, StackTrace stackTrace) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: ErrorCard(message: 'Error histórico: $error'),
+      ),
+    );
+  }
+}
+
+class _DetailTile extends StatelessWidget {
+  const _DetailTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 20, color: theme.colorScheme.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _TechnicianShimmer extends StatelessWidget {
   const _TechnicianShimmer();
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(width: 160, child: ShimmerPlaceholder(height: 48));
+    return const SizedBox(width: 180, child: ShimmerPlaceholder(height: 48));
+  }
+}
+
+class _TicketDetailShimmer extends StatelessWidget {
+  const _TicketDetailShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      children: const <Widget>[
+        ShimmerPlaceholder(height: 220),
+        SizedBox(height: 16),
+        ShimmerPlaceholder(height: 160),
+        SizedBox(height: 24),
+        ShimmerPlaceholder(height: 200),
+      ],
+    );
   }
 }
 
 IconData _eventIcon(TicketEventType type) {
   switch (type) {
-    case TicketEventType.created:
-      return Icons.note_add_outlined;
-    case TicketEventType.statusChanged:
-      return Icons.autorenew;
-    case TicketEventType.assignment:
-      return Icons.engineering;
     case TicketEventType.comment:
       return Icons.chat_bubble_outline;
-    case TicketEventType.documentGenerated:
+    case TicketEventType.statusChange:
+      return Icons.swap_horiz;
+    case TicketEventType.assignment:
+      return Icons.engineering;
+    case TicketEventType.document:
       return Icons.picture_as_pdf_outlined;
+  }
+}
+
+IconData _statusActionIcon(TicketStatus status) {
+  switch (status) {
+    case TicketStatus.nuevo:
+      return Icons.fiber_new;
+    case TicketStatus.enRevision:
+      return Icons.search;
+    case TicketStatus.enProceso:
+      return Icons.autorenew;
+    case TicketStatus.resuelto:
+      return Icons.check_circle_outline;
+    case TicketStatus.cerrado:
+      return Icons.lock_outline;
   }
 }

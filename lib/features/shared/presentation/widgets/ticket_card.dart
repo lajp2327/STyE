@@ -13,64 +13,79 @@ class TicketCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
-    final Color statusColor = statusColorFor(ticket.status, scheme);
     final MaterialLocalizations localizations = MaterialLocalizations.of(
       context,
     );
 
-    return Card.outlined(
-      elevation: 1.5,
+    return Card(
+      elevation: 2,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  _StatusDot(color: statusColor),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          '${ticket.folio} · ${ticket.title}',
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          ticket.title,
+                          style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
-                          runSpacing: 4,
+                          runSpacing: 8,
                           children: <Widget>[
                             StatusChip(status: ticket.status, compact: true),
-                            _MetadataChip(
-                              icon: Icons.category_outlined,
-                              label: ticket.category.label,
+                            AbsorbPointer(
+                              child: AssistChip(
+                                onPressed: () {},
+                                icon: const Icon(Icons.category_outlined),
+                                label: Text(ticket.category.label),
+                              ),
                             ),
-                            _MetadataChip(
-                              icon: Icons.person_outline,
-                              label: ticket.requesterName,
+                            AbsorbPointer(
+                              child: InputChip(
+                                onPressed: () {},
+                                avatar: const Icon(Icons.person_outline, size: 18),
+                                label: Text(ticket.requesterName),
+                              ),
                             ),
                             if (ticket.assignedTechnician != null)
-                              _MetadataChip(
-                                icon: Icons.engineering,
-                                label: ticket.assignedTechnician!.name,
+                              AbsorbPointer(
+                                child: InputChip(
+                                  onPressed: () {},
+                                  avatar: const Icon(Icons.engineering, size: 18),
+                                  label: Text(ticket.assignedTechnician!.name),
+                                ),
                               ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
+                      Text(
+                        'Folio ${ticket.folio}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: scheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Text(
                         localizations.formatShortDate(ticket.createdAt),
                         style: theme.textTheme.labelMedium,
@@ -80,70 +95,35 @@ class TicketCard extends StatelessWidget {
                           TimeOfDay.fromDateTime(ticket.createdAt),
                         ),
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: scheme.outline,
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
+                      if (ticket.resolvedAt != null) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Resuelto ${localizations.formatShortDate(ticket.resolvedAt!)}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: scheme.tertiary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 ticket.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
-class _MetadataChip extends StatelessWidget {
-  const _MetadataChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

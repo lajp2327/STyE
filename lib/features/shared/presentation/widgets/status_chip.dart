@@ -13,14 +13,22 @@ class StatusChip extends StatelessWidget {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final Color statusColor = statusColorFor(status, scheme);
     final TextStyle? style = Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: statusColor,
         );
     return Chip(
-      visualDensity:
-          compact ? VisualDensity.compact : VisualDensity.comfortable,
-      side: BorderSide(color: statusColor.withOpacity(0.4)),
-      backgroundColor: statusColor.withOpacity(0.12),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 14,
+        vertical: compact ? 6 : 10,
+      ),
+      avatar: Icon(
+        Icons.brightness_1,
+        size: compact ? 10 : 12,
+        color: statusColor,
+        semanticLabel: 'Estado ${status.label}',
+      ),
+      side: BorderSide(color: statusColor.withOpacity(0.3)),
+      backgroundColor: statusColor.withOpacity(0.14),
       label: Text(status.label, style: style),
     );
   }
