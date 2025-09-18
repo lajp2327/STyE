@@ -16,14 +16,20 @@ class TicketCard extends StatelessWidget {
     final MaterialLocalizations localizations = MaterialLocalizations.of(
       context,
     );
+    final String createdAtLabel =
+        '${localizations.formatMediumDate(ticket.createdAt)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(ticket.createdAt))}';
+    final String updatedAtLabel =
+        '${localizations.formatMediumDate(ticket.updatedAt)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(ticket.updatedAt))}';
+    final String? resolvedLabel = ticket.resolvedAt != null
+        ? '${localizations.formatMediumDate(ticket.resolvedAt!)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(ticket.resolvedAt!))}'
+        : null;
 
     return Card(
-      elevation: 2,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -34,95 +40,204 @@ class TicketCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          ticket.title,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: <Widget>[
-                            StatusChip(status: ticket.status, compact: true),
-                            AbsorbPointer(
-                              child: AssistChip(
-                                onPressed: () {},
-                                icon: const Icon(Icons.category_outlined),
-                                label: Text(ticket.category.label),
-                              ),
+                            StatusChip(status: ticket.status),
+                            _MetadataBadge(
+                              icon: Icons.category_outlined,
+                              label: ticket.category.label,
+                              dense: true,
+                              backgroundColor:
+                                  scheme.secondaryContainer.withOpacity(0.6),
+                              foregroundColor: scheme.onSecondaryContainer,
                             ),
-                            AbsorbPointer(
-                              child: InputChip(
-                                onPressed: () {},
-                                avatar: const Icon(Icons.person_outline, size: 18),
-                                label: Text(ticket.requesterName),
-                              ),
-                            ),
-                            if (ticket.assignedTechnician != null)
-                              AbsorbPointer(
-                                child: InputChip(
-                                  onPressed: () {},
-                                  avatar: const Icon(Icons.engineering, size: 18),
-                                  label: Text(ticket.assignedTechnician!.name),
-                                ),
+                            if (ticket.isAltaRmFg)
+                              _MetadataBadge(
+                                icon: Icons.picture_as_pdf_outlined,
+                                label: 'Alta RM/FG',
+                                dense: true,
+                                backgroundColor:
+                                    scheme.tertiaryContainer.withOpacity(0.6),
+                                foregroundColor: scheme.onTertiaryContainer,
                               ),
                           ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          ticket.title,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: <Widget>[
-                      Text(
-                        'Folio ${ticket.folio}',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: scheme.primary,
+                  SizedBox(
+                    width: 208,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        _MetadataBadge(
+                          icon: Icons.confirmation_number_outlined,
+                          label: 'Folio ${ticket.folio}',
+                          dense: true,
+                          backgroundColor: scheme.primaryContainer,
+                          foregroundColor: scheme.onPrimaryContainer,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        localizations.formatShortDate(ticket.createdAt),
-                        style: theme.textTheme.labelMedium,
-                      ),
-                      Text(
-                        localizations.formatTimeOfDay(
-                          TimeOfDay.fromDateTime(ticket.createdAt),
+                        const SizedBox(height: 12),
+                        _MetadataTile(
+                          icon: Icons.calendar_month_outlined,
+                          label: createdAtLabel,
+                          foregroundColor: scheme.onSurfaceVariant,
                         ),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      if (ticket.resolvedAt != null) ...<Widget>[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Resuelto ${localizations.formatShortDate(ticket.resolvedAt!)}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: scheme.tertiary,
-                            fontWeight: FontWeight.w600,
+                        if (resolvedLabel != null) ...<Widget>[
+                          const SizedBox(height: 6),
+                          _MetadataTile(
+                            icon: Icons.task_alt_outlined,
+                            label: 'Resuelto $resolvedLabel',
+                            foregroundColor: scheme.tertiary,
+                            bold: true,
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: <Widget>[
+                  _MetadataBadge(
+                    icon: Icons.person_outline,
+                    label: ticket.requesterName,
+                  ),
+                  if (ticket.assignedTechnician != null)
+                    _MetadataBadge(
+                      icon: Icons.engineering,
+                      label: ticket.assignedTechnician!.name,
+                    ),
+                  _MetadataBadge(
+                    icon: Icons.schedule_outlined,
+                    label: 'Actualizado $updatedAtLabel',
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               Text(
                 ticket.description,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
+                  height: 1.5,
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetadataBadge extends StatelessWidget {
+  const _MetadataBadge({
+    required this.icon,
+    required this.label,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.dense = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    final Color bg = backgroundColor ?? scheme.surfaceVariant.withOpacity(0.4);
+    final Color fg = foregroundColor ?? scheme.onSurfaceVariant;
+    return Container(
+      padding: dense
+          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(dense ? 16 : 20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetadataTile extends StatelessWidget {
+  const _MetadataTile({
+    required this.icon,
+    required this.label,
+    this.foregroundColor,
+    this.bold = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? foregroundColor;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final Color color = foregroundColor ?? theme.colorScheme.onSurfaceVariant;
+    final TextStyle? style = (bold ? theme.textTheme.labelLarge : theme.textTheme.labelMedium)
+        ?.copyWith(
+      color: color,
+      fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+    );
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 220),
+        child: Row(
+          mainAxisSize: MainAxisSize.max,
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: style,
+              ),
+            ),
+          ],
         ),
       ),
     );
