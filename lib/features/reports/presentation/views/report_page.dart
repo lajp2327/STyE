@@ -22,6 +22,7 @@ class ReportPage extends ConsumerWidget {
     return CustomScrollView(
       slivers: <Widget>[
         SliverAppBar.large(
+          pinned: true,
           title: const Text('Reportes'),
           actions: <Widget>[
             IconButton(
@@ -35,7 +36,7 @@ class ReportPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           sliver: SliverToBoxAdapter(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 260),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               child: state.when(
@@ -62,87 +63,120 @@ class _ReportContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Column(
-      children: <Widget>[
-        _SectionCard(
-          title: 'Tickets por categoría',
-          child: _CategoryBarChart(data: summary.byCategory),
-          legend: summary.byCategory.entries
-              .map(
-                (MapEntry<TicketCategory, int> entry) => _LegendChip(
-                  label: entry.key.label,
-                  color: theme.colorScheme.primary,
+    final ColorScheme scheme = theme.colorScheme;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double width = constraints.maxWidth;
+        const double spacing = 16;
+        final bool isTwoColumns = width >= 900;
+        final double cardWidth = isTwoColumns ? (width - spacing) / 2 : width;
+        final List<MapEntry<TicketCategory, int>> categories =
+            summary.byCategory.entries.toList();
+        final List<MapEntry<TicketStatus, int>> statuses =
+            summary.byStatus.entries.toList();
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: <Widget>[
+            _ReportCard(
+              width: cardWidth,
+              title: 'Tickets por categoría',
+              contentHeight: 240,
+              child: _CategoryBarChart(data: summary.byCategory),
+              legend: List<Widget>.generate(
+                categories.length,
+                (int index) => _LegendChip(
+                  label: categories[index].key.label,
+                  color: _categoryColor(index, scheme),
                 ),
-              )
-              .toList(),
-        ),
-        _SectionCard(
-          title: 'Tickets por estado',
-          child: _StatusPieChart(data: summary.byStatus),
-          legend: summary.byStatus.entries
-              .map(
-                (MapEntry<TicketStatus, int> entry) => _LegendChip(
-                  label: entry.key.label,
-                  color: _statusColor(entry.key, theme.colorScheme),
-                ),
-              )
-              .toList(),
-        ),
-        _SectionCard(
-          title: 'Promedio por estado',
-          child: _DurationLineChart(data: summary.statusDurations),
-          legend: summary.statusDurations.keys
-              .map(
-                (TicketStatus status) => _LegendChip(
-                  label: status.label,
-                  color: _statusColor(status, theme.colorScheme),
-                ),
-              )
-              .toList(),
-        ),
-        _SectionCard(
-          title: 'Tickets por técnico',
-          child: _TechnicianList(data: summary.byTechnician),
-        ),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.timer_outlined),
-            title: const Text('Tiempo promedio de resolución'),
-            subtitle: Text(formatDuration(summary.averageResolution)),
-          ),
-        ),
-      ],
+              ),
+            ),
+            _ReportCard(
+              width: cardWidth,
+              title: 'Tickets por estado',
+              contentHeight: 240,
+              child: _StatusPieChart(data: summary.byStatus),
+              legend: statuses
+                  .map(
+                    (MapEntry<TicketStatus, int> entry) => _LegendChip(
+                      label: entry.key.label,
+                      color: _statusColor(entry.key, scheme),
+                    ),
+                  )
+                  .toList(),
+            ),
+            _ReportCard(
+              width: cardWidth,
+              title: 'Tiempo promedio por estado',
+              contentHeight: 240,
+              child: _DurationLineChart(data: summary.statusDurations),
+              legend: statuses
+                  .map(
+                    (MapEntry<TicketStatus, int> entry) => _LegendChip(
+                      label: entry.key.label,
+                      color: _statusColor(entry.key, scheme),
+                    ),
+                  )
+                  .toList(),
+            ),
+            _ReportCard(
+              width: cardWidth,
+              title: 'Tickets por técnico',
+              child: _TechnicianList(data: summary.byTechnician),
+            ),
+            _ReportCard(
+              width: isTwoColumns ? cardWidth : width,
+              title: 'Tiempo promedio de resolución',
+              contentHeight: 160,
+              child: _ResolutionSummary(duration: summary.averageResolution),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
+class _ReportCard extends StatelessWidget {
+  const _ReportCard({
     required this.title,
     required this.child,
     this.legend,
+    this.width,
+    this.contentHeight,
   });
 
   final String title;
   final Widget child;
   final List<Widget>? legend;
+  final double? width;
+  final double? contentHeight;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    final Widget body = contentHeight != null
+        ? SizedBox(height: contentHeight, child: child)
+        : child;
+    return SizedBox(
+      width: width,
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              SizedBox(height: 220, child: child),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              body,
               if (legend != null && legend!.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Wrap(
                   spacing: 12,
                   runSpacing: 8,
@@ -166,14 +200,27 @@ class _LegendChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Chip(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      avatar: Icon(Icons.brightness_1, size: 12, color: color),
-      label: Text(
-        label,
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
+    final ColorScheme scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.32)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.circle, size: 12, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -195,51 +242,68 @@ class _CategoryBarChart extends StatelessWidget {
     }
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
+    final List<MapEntry<TicketCategory, int>> entries = data.entries.toList();
     final List<BarChartGroupData> groups = <BarChartGroupData>[];
-    int index = 0;
-    for (final MapEntry<TicketCategory, int> entry in data.entries) {
+    for (int index = 0; index < entries.length; index++) {
+      final MapEntry<TicketCategory, int> entry = entries[index];
+      final Color barColor = _categoryColor(index, scheme);
       groups.add(
         BarChartGroupData(
           x: index,
           barRods: <BarChartRodData>[
             BarChartRodData(
               toY: entry.value.toDouble(),
-              color: scheme.primary,
-              width: 18,
-              borderRadius: const BorderRadius.all(Radius.circular(12)),
+              width: 20,
+              borderRadius: const BorderRadius.all(Radius.circular(14)),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  barColor,
+                  barColor.withOpacity(0.65),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ],
           showingTooltipIndicators: const <int>[0],
         ),
       );
-      index++;
     }
-    final int maxValue = data.values.reduce((int a, int b) => a > b ? a : b);
+    final int maxValue = entries.fold<int>(
+      0,
+      (int previousValue, MapEntry<TicketCategory, int> element) =>
+          element.value > previousValue ? element.value : previousValue,
+    );
+    final TextStyle tooltipLabelStyle =
+        (theme.textTheme.labelSmall ?? const TextStyle(fontSize: 12)).copyWith(
+      color: scheme.onInverseSurface.withOpacity(0.72),
+    );
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
+        barGroups: groups,
+        maxY: (maxValue == 0 ? 1 : maxValue.toDouble() * 1.2),
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
             tooltipBgColor: scheme.inverseSurface,
-            tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            tooltipRoundedRadius: 14,
+            tooltipRoundedRadius: 16,
+            tooltipPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             getTooltipItem: (
               BarChartGroupData group,
               int groupIndex,
               BarChartRodData rod,
               int rodIndex,
             ) {
-              final TicketCategory category = data.keys.elementAt(group.x.toInt());
+              final TicketCategory category = entries[group.x.toInt()].key;
               return BarTooltipItem(
                 '${_oneLineLabel(category.label)}\n',
-                theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onInverseSurface.withOpacity(0.72),
-                ),
+                tooltipLabelStyle,
                 children: <TextSpan>[
                   TextSpan(
-                    text: rod.toY.toStringAsFixed(0),
-                    style: theme.textTheme.titleLarge?.copyWith(
+                    text: '${rod.toY.toStringAsFixed(0)} tickets',
+                    style: theme.textTheme.titleMedium?.copyWith(
                       color: scheme.onInverseSurface,
                       fontWeight: FontWeight.w700,
                     ),
@@ -250,17 +314,19 @@ class _CategoryBarChart extends StatelessWidget {
           ),
         ),
         titlesData: FlTitlesData(
-          show: true,
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 40,
+              reservedSize: 44,
               getTitlesWidget: (double value, TitleMeta meta) {
-                final TicketCategory category = data.keys.elementAt(value.toInt());
+                if (value.toInt() < 0 || value.toInt() >= entries.length) {
+                  return const SizedBox.shrink();
+                }
+                final TicketCategory category = entries[value.toInt()].key;
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    _oneLineLabel(category.label, maxLength: 12),
+                    _oneLineLabel(category.label, maxLength: 14),
                     style: theme.textTheme.labelSmall,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -278,21 +344,19 @@ class _CategoryBarChart extends StatelessWidget {
               ),
             ),
           ),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         gridData: FlGridData(
           drawVerticalLine: false,
           getDrawingHorizontalLine: (_) => FlLine(
-            color: scheme.outlineVariant.withOpacity(0.3),
+            color: scheme.outlineVariant.withOpacity(0.28),
             strokeWidth: 1,
+            dashArray: <int>[4, 4],
           ),
         ),
         borderData: FlBorderData(show: false),
-        barGroups: groups,
-        maxY: (maxValue == 0 ? 1 : maxValue.toDouble() * 1.2),
       ),
-      swapAnimationDuration: const Duration(milliseconds: 300),
     );
   }
 }
@@ -311,33 +375,34 @@ class _StatusPieChart extends StatelessWidget {
         icon: Icons.pie_chart_outline,
       );
     }
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    int index = 0;
-    final List<PieChartSectionData> sections = data.entries.map((
-      MapEntry<TicketStatus, int> entry,
-    ) {
-      final PieChartSectionData section = PieChartSectionData(
-        color: _statusColor(entry.key, scheme),
-        value: entry.value.toDouble(),
-        title: entry.value.toString(),
-        radius: 70,
-        titleStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: scheme.onPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    final List<MapEntry<TicketStatus, int>> entries = data.entries.toList();
+    final int total = entries.fold<int>(0, (int value, MapEntry<TicketStatus, int> element) => value + element.value);
+    final List<PieChartSectionData> sections = <PieChartSectionData>[];
+    for (final MapEntry<TicketStatus, int> entry in entries) {
+      final double percentage = total == 0 ? 0 : entry.value / total * 100;
+      sections.add(
+        PieChartSectionData(
+          color: _statusColor(entry.key, scheme),
+          value: entry.value.toDouble(),
+          title: '${percentage.toStringAsFixed(0)}%',
+          titleStyle: theme.textTheme.labelLarge?.copyWith(
+            color: scheme.onPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+          radius: 68,
+        ),
       );
-      index++;
-      return section;
-    }).toList();
+    }
     return PieChart(
       PieChartData(
         sections: sections,
         sectionsSpace: 2,
-        centerSpaceRadius: 40,
-        borderData: FlBorderData(show: false),
+        centerSpaceRadius: 42,
         pieTouchData: PieTouchData(enabled: true),
+        borderData: FlBorderData(show: false),
       ),
-      swapAnimationDuration: const Duration(milliseconds: 300),
     );
   }
 }
@@ -358,32 +423,32 @@ class _DurationLineChart extends StatelessWidget {
     }
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
+    final List<MapEntry<TicketStatus, Duration>> entries = data.entries.toList();
     final List<FlSpot> spots = <FlSpot>[];
-    int index = 0;
-    for (final MapEntry<TicketStatus, Duration> entry in data.entries) {
-      spots.add(FlSpot(index.toDouble(), entry.value.inHours.toDouble()));
-      index++;
+    for (int index = 0; index < entries.length; index++) {
+      spots.add(FlSpot(index.toDouble(), entries[index].value.inHours.toDouble()));
     }
+    final TextStyle tooltipLabelStyle =
+        (theme.textTheme.labelSmall ?? const TextStyle(fontSize: 12)).copyWith(
+      color: scheme.onInverseSurface.withOpacity(0.72),
+    );
     return LineChart(
       LineChartData(
+        minY: 0,
         lineTouchData: LineTouchData(
           enabled: true,
           touchTooltipData: LineTouchTooltipData(
             tooltipBgColor: scheme.inverseSurface,
-            tooltipRoundedRadius: 14,
-            getTooltipItems: (
-              List<LineBarSpot> touchedSpots,
-            ) => touchedSpots
+            tooltipRoundedRadius: 16,
+            getTooltipItems: (List<LineBarSpot> touchedSpots) => touchedSpots
                 .map(
                   (LineBarSpot spot) => LineTooltipItem(
-                    '${_oneLineLabel(data.keys.elementAt(spot.x.toInt()).label)}\n',
-                    theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onInverseSurface.withOpacity(0.72),
-                    ),
+                    '${_oneLineLabel(entries[spot.x.toInt()].key.label)}\n',
+                    tooltipLabelStyle,
                     children: <TextSpan>[
                       TextSpan(
                         text: '${spot.y.toStringAsFixed(1)} h',
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        style: theme.textTheme.titleMedium?.copyWith(
                           color: scheme.onInverseSurface,
                           fontWeight: FontWeight.w700,
                         ),
@@ -397,13 +462,20 @@ class _DurationLineChart extends StatelessWidget {
         lineBarsData: <LineChartBarData>[
           LineChartBarData(
             isCurved: true,
-            color: scheme.primary,
             barWidth: 4,
+            color: scheme.primary,
             spots: spots,
             dotData: FlDotData(show: true),
             belowBarData: BarAreaData(
               show: true,
-              color: scheme.primary.withOpacity(0.12),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  scheme.primary.withOpacity(0.24),
+                  scheme.primary.withOpacity(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ),
         ],
@@ -412,7 +484,10 @@ class _DurationLineChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (double value, TitleMeta meta) {
-                final TicketStatus status = data.keys.elementAt(value.toInt());
+                if (value.toInt() < 0 || value.toInt() >= entries.length) {
+                  return const SizedBox.shrink();
+                }
+                final TicketStatus status = entries[value.toInt()].key;
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -437,15 +512,15 @@ class _DurationLineChart extends StatelessWidget {
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         gridData: FlGridData(
+          drawVerticalLine: false,
           getDrawingHorizontalLine: (_) => FlLine(
             color: scheme.outlineVariant.withOpacity(0.25),
             strokeWidth: 1,
+            dashArray: const <int>[4, 4],
           ),
-          drawVerticalLine: false,
         ),
         borderData: FlBorderData(show: false),
       ),
-      swapAnimationDuration: const Duration(milliseconds: 300),
     );
   }
 }
@@ -465,29 +540,76 @@ class _TechnicianList extends StatelessWidget {
       );
     }
     final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    final List<MapEntry<Technician, int>> entries = data.entries.toList();
     return Column(
-      children: data.entries
-          .map(
-            (MapEntry<Technician, int> entry) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      children: List<Widget>.generate(entries.length, (int index) {
+        final MapEntry<Technician, int> entry = entries[index];
+        final bool isLast = index == entries.length - 1;
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceVariant.withOpacity(0.24),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: theme.colorScheme.primaryContainer,
+                backgroundColor: scheme.primaryContainer,
                 child: Icon(
                   Icons.engineering,
-                  color: theme.colorScheme.onPrimaryContainer,
+                  color: scheme.onPrimaryContainer,
                 ),
               ),
               title: Text(entry.key.name),
               subtitle: Text(entry.key.email),
-              trailing: Text(
-                '${entry.value}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              trailing: _LegendChip(
+                label: '${entry.value} tickets',
+                color: scheme.primary,
               ),
             ),
-          )
-          .toList(),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _ResolutionSummary extends StatelessWidget {
+  const _ResolutionSummary({required this.duration});
+
+  final Duration? duration;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: scheme.primaryContainer,
+            child: Icon(Icons.timer_outlined, color: scheme.primary, size: 28),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            formatDuration(duration),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Promedio de resolución por ticket',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -497,14 +619,44 @@ class _ReportsShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const <Widget>[
-        ShimmerPlaceholder(height: 260),
-        SizedBox(height: 16),
-        ShimmerPlaceholder(height: 260),
-        SizedBox(height: 16),
-        ShimmerPlaceholder(height: 260),
-      ],
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double width = constraints.maxWidth;
+        const double spacing = 16;
+        final bool isTwoColumns = width >= 900;
+        final double cardWidth = isTwoColumns ? (width - spacing) / 2 : width;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: <Widget>[
+            ShimmerPlaceholder(
+              width: cardWidth,
+              height: 280,
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+            ShimmerPlaceholder(
+              width: cardWidth,
+              height: 280,
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+            ShimmerPlaceholder(
+              width: cardWidth,
+              height: 280,
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+            ShimmerPlaceholder(
+              width: cardWidth,
+              height: 220,
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+            ShimmerPlaceholder(
+              width: isTwoColumns ? cardWidth : width,
+              height: 200,
+              borderRadius: const BorderRadius.all(Radius.circular(24)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -522,6 +674,17 @@ Color _statusColor(TicketStatus status, ColorScheme scheme) {
     case TicketStatus.cerrado:
       return scheme.outline;
   }
+}
+
+Color _categoryColor(int index, ColorScheme scheme) {
+  final List<Color> palette = <Color>[
+    scheme.primary,
+    scheme.secondary,
+    scheme.tertiary,
+    scheme.primaryContainer,
+    scheme.secondaryContainer,
+  ];
+  return palette[index % palette.length];
 }
 
 String _oneLineLabel(String text, {int maxLength = 18}) {

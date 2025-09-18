@@ -15,19 +15,33 @@ final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'shell',
 );
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final bool isTicketsTab = navigationShell.currentIndex == 0;
+    final bool fabVisible =
+        isTicketsTab && ref.watch(dashboardFabVisibilityProvider);
+
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: navigationShell.currentIndex == 0
-          ? SafeArea(
-              minimum: const EdgeInsets.only(bottom: 16, right: 16),
-              top: false,
+      floatingActionButton: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(right: 12, bottom: 16),
+        child: AnimatedSlide(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          offset: fabVisible ? Offset.zero : const Offset(0, 1.4),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            opacity: fabVisible ? 1 : 0,
+            child: IgnorePointer(
+              ignoring: !fabVisible,
               child: FloatingActionButton.extended(
                 onPressed: () => context.go('/tickets/new'),
                 icon: const Icon(
@@ -36,38 +50,65 @@ class AppShell extends StatelessWidget {
                 ),
                 label: const Text('Nuevo ticket'),
               ),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (int index) {
-              navigationShell.goBranch(
-                index,
-                initialLocation: index == navigationShell.currentIndex,
-              );
-            },
-            destinations: const <NavigationDestination>[
-              NavigationDestination(
-                icon: Icon(Icons.confirmation_number_outlined),
-                selectedIcon: Icon(Icons.confirmation_number),
-                label: 'Tickets',
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withOpacity(0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: NavigationBar(
+                height: 70,
+                backgroundColor: Colors.transparent,
+                indicatorColor: theme.colorScheme.primary.withOpacity(0.14),
+                selectedIndex: navigationShell.currentIndex,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                onDestinationSelected: (int index) {
+                  navigationShell.goBranch(
+                    index,
+                    initialLocation: index == navigationShell.currentIndex,
+                  );
+                },
+                destinations: const <NavigationDestination>[
+                  NavigationDestination(
+                    icon: Icon(Icons.dashboard_outlined),
+                    selectedIcon: Icon(Icons.dashboard_rounded),
+                    label: 'Tickets',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.add_circle_outline),
+                    selectedIcon: Icon(Icons.add_circle),
+                    label: 'Nuevo',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.stacked_bar_chart_outlined),
+                    selectedIcon: Icon(Icons.stacked_bar_chart),
+                    label: 'Reportes',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings_rounded),
+                    label: 'Ajustes',
+                  ),
+                ],
               ),
-              NavigationDestination(
-                icon: Icon(Icons.insert_chart_outlined),
-                selectedIcon: Icon(Icons.insert_chart),
-                label: 'Reportes',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Ajustes',
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -95,24 +136,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/tickets',
                 name: 'dashboard',
                 pageBuilder: (BuildContext context, GoRouterState state) =>
-                    const NoTransitionPage<void>(child: TicketDashboardPage()),
+                    _buildAnimatedPage<void>(
+                      state.pageKey,
+                      const TicketDashboardPage(),
+                    ),
                 routes: <RouteBase>[
-                  GoRoute(
-                    path: 'new',
-                    name: 'ticket-new',
-                    parentNavigatorKey: _rootNavigatorKey,
-                    builder: (BuildContext context, GoRouterState state) =>
-                        const TicketFormPage(),
-                  ),
                   GoRoute(
                     path: ':id',
                     name: 'ticket-detail',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (BuildContext context, GoRouterState state) {
+                    pageBuilder: (
+                      BuildContext context,
+                      GoRouterState state,
+                    ) {
                       final int ticketId = int.parse(
                         state.pathParameters['id']!,
                       );
-                      return TicketDetailPage(ticketId: ticketId);
+                      return _buildAnimatedPage<void>(
+                        state.pageKey,
+                        TicketDetailPage(ticketId: ticketId),
+                      );
                     },
                   ),
                 ],
@@ -122,10 +165,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
+                path: '/tickets/new',
+                name: 'ticket-new',
+                pageBuilder: (BuildContext context, GoRouterState state) =>
+                    _buildAnimatedPage<void>(
+                  state.pageKey,
+                  const TicketFormPage(),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
                 path: '/reports',
                 name: 'reports',
                 pageBuilder: (BuildContext context, GoRouterState state) =>
-                    const NoTransitionPage<void>(child: ReportPage()),
+                    _buildAnimatedPage<void>(
+                  state.pageKey,
+                  const ReportPage(),
+                ),
               ),
             ],
           ),
@@ -135,7 +194,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/settings',
                 name: 'settings',
                 pageBuilder: (BuildContext context, GoRouterState state) =>
-                    const NoTransitionPage<void>(child: SettingsPage()),
+                    _buildAnimatedPage<void>(
+                  state.pageKey,
+                  const SettingsPage(),
+                ),
               ),
             ],
           ),
@@ -144,3 +206,37 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+CustomTransitionPage<T> _buildAnimatedPage<T>(
+  LocalKey key,
+  Widget child,
+) {
+  return CustomTransitionPage<T>(
+    key: key,
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    child: child,
+    transitionsBuilder: (
+      BuildContext context,
+      Animation<double> animation,
+      Animation<double> secondaryAnimation,
+      Widget child,
+    ) {
+      final CurvedAnimation curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curvedAnimation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.02),
+            end: Offset.zero,
+          ).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
+}

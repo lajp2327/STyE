@@ -219,39 +219,38 @@ class _TicketDetailBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: <Widget>[
                     StatusChip(status: ticket.status),
-                    AbsorbPointer(
-                      child: AssistChip(
-                        onPressed: () {},
-                        icon: const Icon(Icons.category_outlined),
-                        label: Text(ticket.category.label),
-                      ),
+                    _InfoBadge(
+                      icon: Icons.category_outlined,
+                      label: 'Categoría',
+                      value: ticket.category.label,
+                      backgroundColor:
+                          scheme.secondaryContainer.withOpacity(0.7),
+                      foregroundColor: scheme.onSecondaryContainer,
                     ),
-                    AbsorbPointer(
-                      child: InputChip(
-                        onPressed: () {},
-                        avatar: const Icon(Icons.person_outline, size: 18),
-                        label: Text(ticket.requesterName),
-                      ),
+                    _InfoBadge(
+                      icon: Icons.person_outline,
+                      label: 'Solicitante',
+                      value: ticket.requesterName,
+                      backgroundColor: scheme.primaryContainer,
+                      foregroundColor: scheme.onPrimaryContainer,
                     ),
                     if (ticket.assignedTechnician != null)
-                      AbsorbPointer(
-                        child: InputChip(
-                          onPressed: () {},
-                          avatar: const Icon(Icons.engineering, size: 18),
-                          label: Text(ticket.assignedTechnician!.name),
-                        ),
+                      _InfoBadge(
+                        icon: Icons.engineering,
+                        label: 'Técnico asignado',
+                        value: ticket.assignedTechnician!.name,
+                        backgroundColor: scheme.tertiaryContainer,
+                        foregroundColor: scheme.onTertiaryContainer,
                       ),
                     if (ticket.isAltaRmFg)
-                      AbsorbPointer(
-                        child: AssistChip(
-                          onPressed: () {},
-                          icon: const Icon(Icons.picture_as_pdf_outlined),
-                          label: const Text('Alta RM/FG'),
-                        ),
+                      _InfoBadge(
+                        icon: Icons.picture_as_pdf_outlined,
+                        label: 'Documento',
+                        value: 'Alta RM/FG',
                       ),
                   ],
                 ),
@@ -313,10 +312,16 @@ class _TicketDetailBody extends StatelessWidget {
                         onPressed: () => onChangeStatus(status),
                         icon: Icon(_statusActionIcon(status)),
                         label: Text(status.label),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
                       ),
                     ),
                     techniciansAsync.when(
-                      data: (List<Technician> technicians) => FilledButton.icon(
+                      data: (List<Technician> technicians) => FilledButton.tonalIcon(
                         onPressed: technicians.isEmpty
                             ? null
                             : () => _showTechnicianSheet(
@@ -326,21 +331,39 @@ class _TicketDetailBody extends StatelessWidget {
                                 ),
                         icon: const Icon(Icons.engineering),
                         label: const Text('Asignar técnico'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
                       ),
                       loading: () => const _TechnicianShimmer(),
                       error: (Object error, StackTrace stackTrace) =>
                           ErrorCard(message: 'Error técnicos: $error'),
                     ),
-                    OutlinedButton.icon(
+                    FilledButton.tonalIcon(
                       onPressed: () => _showCommentDialog(context),
                       icon: const Icon(Icons.chat_bubble_outline),
                       label: const Text('Agregar comentario'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                      ),
                     ),
                     if (onGenerateDocuments != null)
-                      OutlinedButton.icon(
+                      FilledButton.tonalIcon(
                         onPressed: onGenerateDocuments,
                         icon: const Icon(Icons.picture_as_pdf_outlined),
                         label: const Text('Generar RM/FG'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -421,6 +444,65 @@ class _TicketDetailBody extends StatelessWidget {
   }
 }
 
+class _InfoBadge extends StatelessWidget {
+  const _InfoBadge({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.backgroundColor,
+    this.foregroundColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    final Color bg = backgroundColor ?? scheme.surfaceVariant.withOpacity(0.35);
+    final Color fg = foregroundColor ?? scheme.onSurface;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, color: fg, size: 18),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: fg.withOpacity(0.8),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TicketHistory extends StatelessWidget {
   const _TicketHistory({required this.history});
 
@@ -429,7 +511,6 @@ class _TicketHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
     return history.when(
       data: (List<TicketEvent> events) {
         if (events.isEmpty) {
@@ -445,27 +526,18 @@ class _TicketHistory extends StatelessWidget {
           );
         }
         return Card(
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: events.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (BuildContext context, int index) {
-              final TicketEvent event = events[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  child: Icon(
-                    _eventIcon(event.type),
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                title: Text(event.message),
-                subtitle: Text(
-                  '${localizations.formatMediumDate(event.createdAt)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(event.createdAt))}\nPor: ${event.author}',
-                ),
-              );
-            },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              children: List<Widget>.generate(events.length, (int index) {
+                final TicketEvent event = events[index];
+                return _TimelineEntry(
+                  event: event,
+                  isFirst: index == 0,
+                  isLast: index == events.length - 1,
+                );
+              }),
+            ),
           ),
         );
       },
@@ -478,6 +550,105 @@ class _TicketHistory extends StatelessWidget {
       error: (Object error, StackTrace stackTrace) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: ErrorCard(message: 'Error histórico: $error'),
+      ),
+    );
+  }
+}
+
+class _TimelineEntry extends StatelessWidget {
+  const _TimelineEntry({
+    required this.event,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  final TicketEvent event;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
+    final Color lineColor = theme.colorScheme.primary.withOpacity(0.2);
+    final Color indicatorColor = theme.colorScheme.primary;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              width: 36,
+              child: Column(
+                children: <Widget>[
+                  if (!isFirst)
+                    Expanded(
+                      child: Container(width: 2, color: lineColor),
+                    )
+                  else
+                    const SizedBox(height: 4),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: indicatorColor,
+                      shape: BoxShape.circle,
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: indicatorColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _eventIcon(event.type),
+                      color: theme.colorScheme.onPrimary,
+                      size: 16,
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(
+                      child: Container(width: 2, color: lineColor),
+                    )
+                  else
+                    const SizedBox(height: 4),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    event.message,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${localizations.formatMediumDate(event.createdAt)} · ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(event.createdAt))}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Por ${event.author}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -558,12 +729,14 @@ IconData _eventIcon(TicketEventType type) {
   switch (type) {
     case TicketEventType.comment:
       return Icons.chat_bubble_outline;
-    case TicketEventType.statusChange:
+    case TicketEventType.statusChanged:
       return Icons.swap_horiz;
     case TicketEventType.assignment:
       return Icons.engineering;
-    case TicketEventType.document:
+    case TicketEventType.documentGenerated:
       return Icons.picture_as_pdf_outlined;
+    case TicketEventType.created:
+      return Icons.flag_outlined;
   }
 }
 
