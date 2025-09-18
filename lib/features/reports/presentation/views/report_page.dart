@@ -274,6 +274,11 @@ class _CategoryBarChart extends StatelessWidget {
       (int previousValue, MapEntry<TicketCategory, int> element) =>
           element.value > previousValue ? element.value : previousValue,
     );
+    final TextStyle tooltipLabelStyle =
+        (theme.textTheme.labelSmall ?? const TextStyle(fontSize: 12)).copyWith(
+      color: scheme.onInverseSurface.withOpacity(0.72),
+    );
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -295,6 +300,7 @@ class _CategoryBarChart extends StatelessWidget {
               final TicketCategory category = entries[group.x.toInt()].key;
               return BarTooltipItem(
                 '${_oneLineLabel(category.label)}\n',
+                tooltipLabelStyle,
                 theme.textTheme.labelSmall?.copyWith(
                   color: scheme.onInverseSurface.withOpacity(0.72),
                 ),
@@ -351,11 +357,13 @@ class _CategoryBarChart extends StatelessWidget {
             color: scheme.outlineVariant.withOpacity(0.28),
             strokeWidth: 1,
             dashArray: <double>[4, 4],
+
           ),
         ),
         borderData: FlBorderData(show: false),
       ),
       swapAnimationDuration: const Duration(milliseconds: 320),
+
     );
   }
 }
@@ -428,6 +436,10 @@ class _DurationLineChart extends StatelessWidget {
     for (int index = 0; index < entries.length; index++) {
       spots.add(FlSpot(index.toDouble(), entries[index].value.inHours.toDouble()));
     }
+    final TextStyle tooltipLabelStyle =
+        (theme.textTheme.labelSmall ?? const TextStyle(fontSize: 12)).copyWith(
+      color: scheme.onInverseSurface.withOpacity(0.72),
+    );
     return LineChart(
       LineChartData(
         minY: 0,
@@ -440,6 +452,7 @@ class _DurationLineChart extends StatelessWidget {
                 .map(
                   (LineBarSpot spot) => LineTooltipItem(
                     '${_oneLineLabel(entries[spot.x.toInt()].key.label)}\n',
+                    tooltipLabelStyle,
                     theme.textTheme.labelSmall?.copyWith(
                       color: scheme.onInverseSurface.withOpacity(0.72),
                     ),

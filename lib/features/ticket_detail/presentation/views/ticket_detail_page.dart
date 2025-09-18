@@ -729,12 +729,14 @@ IconData _eventIcon(TicketEventType type) {
   switch (type) {
     case TicketEventType.comment:
       return Icons.chat_bubble_outline;
-    case TicketEventType.statusChange:
+    case TicketEventType.statusChanged:
       return Icons.swap_horiz;
     case TicketEventType.assignment:
       return Icons.engineering;
-    case TicketEventType.document:
+    case TicketEventType.documentGenerated:
       return Icons.picture_as_pdf_outlined;
+    case TicketEventType.created:
+      return Icons.flag_outlined;
   }
 }
 
