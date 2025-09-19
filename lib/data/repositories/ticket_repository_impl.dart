@@ -371,6 +371,9 @@ class TicketRepositoryImpl implements TicketRepository {
         !filter.dateRange!.contains(ticket.createdAt)) {
       return false;
     }
+    if (filter.requesterId != null && ticket.requester.id != filter.requesterId) {
+      return false;
+    }
     return true;
   }
 

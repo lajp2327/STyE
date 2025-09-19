@@ -1,9 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sistema_tickets_edis/core/notifications/local_notification_service.dart';
 import 'package:sistema_tickets_edis/core/pdf/alta_document_service.dart';
 import 'package:sistema_tickets_edis/data/local/database/app_database.dart';
+import 'package:sistema_tickets_edis/data/repositories/auth_repository_impl.dart';
 import 'package:sistema_tickets_edis/data/repositories/ticket_repository_impl.dart';
+import 'package:sistema_tickets_edis/domain/entities/session_user.dart';
+import 'package:sistema_tickets_edis/domain/repositories/auth_repository.dart';
 import 'package:sistema_tickets_edis/domain/repositories/ticket_repository.dart';
 import 'package:sistema_tickets_edis/domain/services/ticket_workflow_service.dart';
 import 'package:sistema_tickets_edis/domain/usecases/add_ticket_comment.dart';
@@ -25,6 +29,10 @@ final altaDocumentServiceProvider = Provider<AltaDocumentService>((ref) {
   throw UnimplementedError('AltaDocumentService debe inyectarse desde bootstrap.');
 });
 
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('SharedPreferences debe inyectarse desde bootstrap.');
+});
+
 final ticketWorkflowServiceProvider = Provider<TicketWorkflowService>((ref) {
   return TicketWorkflowService();
 });
@@ -40,6 +48,27 @@ final ticketRepositoryProvider = Provider<TicketRepository>((ref) {
     notificationService: notifications,
     altaDocumentService: altaService,
   );
+});
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final SharedPreferences preferences = ref.watch(sharedPreferencesProvider);
+  final AppDatabase database = ref.watch(appDatabaseProvider);
+  final AuthRepositoryImpl repository = AuthRepositoryImpl(
+    preferences: preferences,
+    database: database,
+  );
+  ref.onDispose(repository.dispose);
+  return repository;
+});
+
+final authStateProvider = StreamProvider<SessionUser?>((ref) {
+  final AuthRepository repository = ref.watch(authRepositoryProvider);
+  return repository.watchSession();
+});
+
+final currentSessionProvider = Provider<SessionUser?>((ref) {
+  final AsyncValue<SessionUser?> authState = ref.watch(authStateProvider);
+  return authState.maybeWhen(data: (SessionUser? value) => value, orElse: () => null);
 });
 
 final createTicketProvider = Provider<CreateTicket>((ref) => CreateTicket(ref.watch(ticketRepositoryProvider)));
