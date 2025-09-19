@@ -71,7 +71,12 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
   @override
   void initState() {
     super.initState();
-    ref.read(ticketFormControllerProvider.notifier).setCategory(widget.initialCategory);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(ticketFormControllerProvider.notifier)
+          .setCategory(widget.initialCategory);
+    });
     _subscription = ref.listenManual<TicketFormState>(
       ticketFormControllerProvider,
       (TicketFormState? prev, TicketFormState next) {
