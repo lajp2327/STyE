@@ -398,6 +398,14 @@ class TicketDao extends DatabaseAccessor<AppDatabase> with _$TicketDaoMixin {
     return rows.groupListsBy((e) => e.ticketId);
   }
 
+  Future<UserRow?> findUserById(int id) {
+    return (select(users)..where((u) => u.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<UserRow?> findUserByEmail(String email) {
+    return (select(users)..where((u) => u.email.equals(email))).getSingleOrNull();
+  }
+
   Future<List<CatalogEntryRow>> getCatalogEntries(String type) {
     final q = (select(catalogEntries)
       ..where((c) => c.type.equals(type))

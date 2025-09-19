@@ -11,11 +11,13 @@ class TicketSystemApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final ThemeMode themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Sistema de Tickets TI',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

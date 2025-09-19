@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:sistema_tickets_edis/app/providers.dart';
 import 'package:sistema_tickets_edis/domain/entities/alta_document_result.dart';
+import 'package:sistema_tickets_edis/domain/entities/session_user.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket_event.dart';
 import 'package:sistema_tickets_edis/domain/entities/technician.dart';
@@ -42,6 +43,7 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     final AsyncValue<List<Technician>> techniciansAsync = ref.watch(
       _techniciansProvider,
     );
+    final SessionUser? session = ref.watch(currentSessionProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text('Ticket #${widget.ticketId}')),
@@ -55,11 +57,15 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
             controller: controller,
             workflow: workflow,
             techniciansAsync: techniciansAsync,
+            session: session,
             onChangeStatus: (TicketStatus status) =>
-                _onChangeStatus(ticket, status, controller),
+                _onChangeStatus(ticket, status, controller, session),
             onAssignTechnician: (Technician technician) =>
                 controller.assignTechnician(technician),
-            onAddComment: (String message) => controller.addComment(message),
+            onAddComment: (String message) => controller.addComment(
+              message,
+              author: session?.user.name ?? 'Usuario',
+            ),
             onGenerateDocuments:
                 ticket.isAltaRmFg ? () => _onGenerateDocuments(controller) : null,
             errorMessage: state.errorMessage,
@@ -78,6 +84,7 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     Ticket ticket,
     TicketStatus status,
     TicketDetailController controller,
+    SessionUser? session,
   ) async {
     final TextEditingController commentController = TextEditingController();
     final bool? confirmed = await showDialog<bool>(
@@ -109,6 +116,7 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
     if (confirmed == true) {
       await controller.changeStatus(
         status,
+        author: session?.user.name ?? 'Coordinador',
         comment: commentController.text.isEmpty ? null : commentController.text,
       );
     }
@@ -170,6 +178,7 @@ class _TicketDetailBody extends StatelessWidget {
     required this.onChangeStatus,
     required this.onAssignTechnician,
     required this.onAddComment,
+    required this.session,
     this.errorMessage,
     this.onGenerateDocuments,
     super.key,
@@ -180,6 +189,7 @@ class _TicketDetailBody extends StatelessWidget {
   final TicketDetailController controller;
   final TicketWorkflowService workflow;
   final AsyncValue<List<Technician>> techniciansAsync;
+  final SessionUser? session;
   final Future<void> Function(TicketStatus status) onChangeStatus;
   final Future<void> Function(Technician technician) onAssignTechnician;
   final Future<void> Function(String message) onAddComment;
@@ -195,6 +205,8 @@ class _TicketDetailBody extends StatelessWidget {
     final Iterable<TicketStatus> nextStatuses = workflow.nextOptions(
       ticket.status,
     );
+    final bool canManage = session?.role.isAdmin ?? false;
+    final bool canComment = session?.role.isAdmin ?? false;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -295,82 +307,104 @@ class _TicketDetailBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('Acciones', style: textTheme.titleMedium),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: <Widget>[
-                    ...nextStatuses.map(
-                      (TicketStatus status) => FilledButton.icon(
-                        onPressed: () => onChangeStatus(status),
-                        icon: Icon(_statusActionIcon(status)),
-                        label: Text(status.label),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
+        if (canManage)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('Acciones', style: textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: <Widget>[
+                      ...nextStatuses.map(
+                        (TicketStatus status) => FilledButton.icon(
+                          onPressed: () => onChangeStatus(status),
+                          icon: Icon(_statusActionIcon(status)),
+                          label: Text(status.label),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    techniciansAsync.when(
-                      data: (List<Technician> technicians) => FilledButton.tonalIcon(
-                        onPressed: technicians.isEmpty
-                            ? null
-                            : () => _showTechnicianSheet(
-                                  context,
-                                  technicians,
-                                  onAssignTechnician,
-                                ),
-                        icon: const Icon(Icons.engineering),
-                        label: const Text('Asignar técnico'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
+                      techniciansAsync.when(
+                        data: (List<Technician> technicians) => FilledButton.tonalIcon(
+                          onPressed: technicians.isEmpty
+                              ? null
+                              : () => _showTechnicianSheet(
+                                    context,
+                                    technicians,
+                                    onAssignTechnician,
+                                  ),
+                          icon: const Icon(Icons.engineering),
+                          label: const Text('Asignar técnico'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
                           ),
                         ),
+                        loading: () => const _TechnicianShimmer(),
+                        error: (Object error, StackTrace stackTrace) =>
+                            ErrorCard(message: 'Error técnicos: $error'),
                       ),
-                      loading: () => const _TechnicianShimmer(),
-                      error: (Object error, StackTrace stackTrace) =>
-                          ErrorCard(message: 'Error técnicos: $error'),
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: () => _showCommentDialog(context),
-                      icon: const Icon(Icons.chat_bubble_outline),
-                      label: const Text('Agregar comentario'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                    if (onGenerateDocuments != null)
-                      FilledButton.tonalIcon(
-                        onPressed: onGenerateDocuments,
-                        icon: const Icon(Icons.picture_as_pdf_outlined),
-                        label: const Text('Generar RM/FG'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
+                      if (canComment)
+                        FilledButton.tonalIcon(
+                          onPressed: () => _showCommentDialog(context),
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          label: const Text('Agregar comentario'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
                           ),
                         ),
+                      if (onGenerateDocuments != null)
+                        FilledButton.tonalIcon(
+                          onPressed: onGenerateDocuments,
+                          icon: const Icon(Icons.picture_as_pdf_outlined),
+                          label: const Text('Generar RM/FG'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.info_outline, color: scheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Solo el equipo de TI puede actualizar este ticket. Revisa las notas para conocer el avance.',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
                       ),
-                  ],
-                ),
-              ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 24),
         Text('Histórico', style: textTheme.titleMedium),
         const SizedBox(height: 8),
