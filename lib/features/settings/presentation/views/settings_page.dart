@@ -45,7 +45,7 @@ class SettingsPage extends ConsumerWidget {
     final bool isAdmin = session?.role.isAdmin ?? false;
     final Color accent = isAdmin ? scheme.primary : scheme.secondary;
     final Color accentContainer = isAdmin ? scheme.primaryContainer : scheme.secondaryContainer;
-    final IconData roleIcon = isAdmin ? Icons.shield_person_outlined : Icons.badge_outlined;
+    final IconData roleIcon = isAdmin ? Icons.admin_panel_settings_outlined : Icons.badge_outlined;
     final String roleLabel = isAdmin ? 'Administrador TI' : 'Usuario';
 
     final List<Widget> capabilityChips = isAdmin

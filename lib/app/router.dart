@@ -202,7 +202,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/login',
-    refreshListenable: GoRouterRefreshStream(authRepository.watchSession()),
     redirect: (BuildContext context, GoRouterState state) {
       final String location = state.matchedLocation;
       final bool loggingIn = location == '/login';
@@ -251,7 +250,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ),
                 routes: <RouteBase>[
                   GoRoute(
-                    path: ':id',
+                    path: ':id(\\d+)',
                     name: 'ticket-detail',
                     parentNavigatorKey: _rootNavigatorKey,
                     pageBuilder: (
