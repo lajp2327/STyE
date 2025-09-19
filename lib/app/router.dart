@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import 'package:sistema_tickets_edis/app/providers.dart';
 import 'package:sistema_tickets_edis/domain/entities/session_user.dart';
+import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 import 'package:sistema_tickets_edis/features/auth/presentation/views/auth_page.dart';
 import 'package:sistema_tickets_edis/features/reports/presentation/views/report_page.dart';
 import 'package:sistema_tickets_edis/features/settings/presentation/views/settings_page.dart';
 import 'package:sistema_tickets_edis/features/ticket_dashboard/presentation/views/ticket_dashboard_page.dart';
 import 'package:sistema_tickets_edis/features/ticket_detail/presentation/views/ticket_detail_page.dart';
 import 'package:sistema_tickets_edis/features/ticket_form/presentation/views/ticket_form_page.dart';
+import 'package:sistema_tickets_edis/features/ticket_form/presentation/widgets/new_ticket_entry_sheet.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -126,7 +128,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             child: IgnorePointer(
               ignoring: !fabVisible,
               child: FloatingActionButton.extended(
-                onPressed: () => context.go('/tickets/new'),
+                onPressed: () => _startNewTicketFlow(context),
                 icon: const Icon(
                   Icons.add,
                   semanticLabel: 'Crear ticket',
@@ -180,6 +182,14 @@ class _AppShellState extends ConsumerState<AppShell> {
         ),
       ),
     );
+}
+
+  Future<void> _startNewTicketFlow(BuildContext context) async {
+    final TicketCategory? category = await showNewTicketEntrySheet(context);
+    if (!mounted || category == null) {
+      return;
+    }
+    context.go('/tickets/new?category=${category.code}');
   }
 }
 
@@ -266,11 +276,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/tickets/new',
                 name: 'ticket-new',
-                pageBuilder: (BuildContext context, GoRouterState state) =>
-                    _buildAnimatedPage<void>(
-                  state.pageKey,
-                  const TicketFormPage(),
-                ),
+                pageBuilder: (BuildContext context, GoRouterState state) {
+                  final String? categoryCode = state.uri.queryParameters['category'];
+                  final TicketCategory? initialCategory = _parseTicketCategory(categoryCode);
+                  return _buildAnimatedPage<void>(
+                    state.pageKey,
+                    TicketFormPage(initialCategory: initialCategory),
+                  );
+                },
               ),
             ],
           ),
@@ -338,4 +351,19 @@ CustomTransitionPage<T> _buildAnimatedPage<T>(
       );
     },
   );
+}
+
+TicketCategory? _parseTicketCategory(String? value) {
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+  for (final TicketCategory category in TicketCategory.values) {
+    if (category.code == value) {
+      return category;
+    }
+    if (category.name.toLowerCase() == value.toLowerCase()) {
+      return category;
+    }
+  }
+  return null;
 }

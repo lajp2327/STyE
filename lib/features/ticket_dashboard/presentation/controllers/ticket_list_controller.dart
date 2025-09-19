@@ -62,9 +62,11 @@ class TicketListController extends StateNotifier<AsyncValue<List<Ticket>>> {
     }
     return TicketFilter(
       status: _filter.status,
+
       category: _filter.category,
       assignedTechnicianId: _filter.assignedTechnicianId,
       dateRange: _filter.dateRange,
+
       requesterId: session.user.id,
     );
   }

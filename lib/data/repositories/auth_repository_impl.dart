@@ -32,7 +32,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
   static const String _accountsKey = 'auth.accounts';
   static const String _currentKey = 'auth.current';
-  static const List<String> _adminKeywords = <String>['juan pablo', 'luis', 'vicente'];
+  static final List<_AdminIdentity> _adminIdentities = <_AdminIdentity>[
+    _AdminIdentity(
+      fullName: 'Juan Pablo Pérez',
+      email: 'jperez@mmpg.com.mx',
+    ),
+    _AdminIdentity(
+      fullName: 'Luis Ángel Mendoza',
+      email: 'lmendoza@mmpg.com.mx',
+    ),
+    _AdminIdentity(
+      fullName: 'Vicente Estrada',
+      email: 'vestrada@mmpg.com.mx',
+    ),
+  ];
+
 
   final SharedPreferences _preferences;
   final AppDatabase _database;
@@ -195,20 +209,55 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   bool _isAdmin(String name, String? email) {
-    final String normalizedName = name.trim().toLowerCase();
-    if (_adminKeywords.contains(normalizedName)) {
-      return true;
-    }
-    if (email != null && email.isNotEmpty) {
-      final String localPart = email.split('@').first;
-      final String normalizedLocal = localPart.replaceAll(RegExp(r'[._]'), ' ').trim().toLowerCase();
-      final String compactLocal = normalizedLocal.replaceAll(' ', '');
-      return _adminKeywords.contains(normalizedLocal) || _adminKeywords.contains(compactLocal);
+    final String normalizedName = _normalizeName(name);
+    final String? normalizedEmail =
+        email != null && email.isNotEmpty ? _normalizeEmail(email) : null;
+    for (final _AdminIdentity identity in _adminIdentities) {
+      if (identity.matches(normalizedName: normalizedName, normalizedEmail: normalizedEmail)) {
+        return true;
+      }
+
     }
     return false;
   }
 
-  String _normalizeEmail(String email) => email.trim().toLowerCase();
+  static String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  static String _normalizeName(String value) {
+    final String lowered = value.trim().toLowerCase();
+    final Map<String, String> replacements = <String, String>{
+      'á': 'a',
+      'à': 'a',
+      'ä': 'a',
+      'â': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ë': 'e',
+      'ê': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'ï': 'i',
+      'î': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ö': 'o',
+      'ô': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'ü': 'u',
+      'û': 'u',
+      'ñ': 'n',
+    };
+    String normalized = lowered;
+    replacements.forEach((String original, String replacement) {
+      normalized = normalized.replaceAll(original, replacement);
+    });
+    normalized = normalized.replaceAll(RegExp(r'[\-_,.]'), ' ');
+    normalized = normalized.replaceAll(RegExp(r'[^a-z0-9\s]'), '');
+    normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return normalized;
+  }
+
 
   String _hashPassword(String password) {
     final List<int> bytes = utf8.encode(password);
@@ -257,3 +306,51 @@ class _StoredAccount {
         passwordHash: json['passwordHash'] as String,
       );
 }
+
+class _AdminIdentity {
+  const _AdminIdentity({
+    required this.fullName,
+    required this.email,
+  });
+
+  final String fullName;
+  final String email;
+
+  bool matches({String? normalizedName, String? normalizedEmail}) {
+    final String normalizedFullName = AuthRepositoryImpl._normalizeName(fullName);
+    final String normalizedEmailValue = AuthRepositoryImpl._normalizeEmail(email);
+
+    if (normalizedEmail != null && normalizedEmail == normalizedEmailValue) {
+      return true;
+    }
+
+    final Set<String> nameCandidates = <String>{normalizedFullName};
+    final List<String> parts = normalizedFullName.split(' ');
+    if (parts.isNotEmpty) {
+      nameCandidates.add(parts.first);
+      nameCandidates.add(parts.last);
+      for (int i = 1; i <= parts.length; i++) {
+        nameCandidates.add(parts.take(i).join(' '));
+      }
+      if (parts.length >= 2) {
+        nameCandidates.add('${parts.first} ${parts.last}');
+      }
+    }
+
+    if (normalizedName != null && nameCandidates.contains(normalizedName)) {
+      return true;
+    }
+
+    if (normalizedEmail != null) {
+      final String localPart = normalizedEmail.split('@').first;
+      final String normalizedLocal =
+          AuthRepositoryImpl._normalizeName(localPart.replaceAll(RegExp(r'[._]'), ' '));
+      if (nameCandidates.contains(normalizedLocal)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+}
+
