@@ -47,6 +47,7 @@ class AuthRepositoryImpl implements AuthRepository {
     ),
   ];
 
+
   final SharedPreferences _preferences;
   final AppDatabase _database;
   late final StreamController<SessionUser?> _controller;
@@ -215,6 +216,7 @@ class AuthRepositoryImpl implements AuthRepository {
       if (identity.matches(normalizedName: normalizedName, normalizedEmail: normalizedEmail)) {
         return true;
       }
+
     }
     return false;
   }
@@ -255,6 +257,7 @@ class AuthRepositoryImpl implements AuthRepository {
     normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
     return normalized;
   }
+
 
   String _hashPassword(String password) {
     final List<int> bytes = utf8.encode(password);
@@ -350,3 +353,4 @@ class _AdminIdentity {
     return false;
   }
 }
+

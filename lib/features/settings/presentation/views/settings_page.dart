@@ -78,6 +78,7 @@ class SettingsPage extends ConsumerWidget {
             ),
           ];
 
+
     return CustomScrollView(
       slivers: <Widget>[
         const SliverAppBar.large(title: Text('Ajustes')),
@@ -270,6 +271,7 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     subtitle: const Text('Termina tu sesión y vuelve al inicio'),
                     trailing: Icon(Icons.arrow_forward_ios_rounded, color: scheme.error),
+
                     onTap: () async {
                       await ref.read(authRepositoryProvider).logout();
                     },

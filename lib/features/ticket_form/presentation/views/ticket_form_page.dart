@@ -109,6 +109,7 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
     final TicketCategory selectedCategory = state.category;
     final _CategoryInfo categoryInfo = _categoryInfo[selectedCategory]!;
     final Color accent = _categoryAccent(theme.colorScheme, selectedCategory);
+
     if (isAdmin && session != null && _requesterController.text.isEmpty) {
       _requesterController.text = session.user.name;
     } else if (!showRequesterField && _requesterController.text.isNotEmpty) {

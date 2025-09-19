@@ -113,6 +113,7 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
       setThemeMode(enabled ? ThemeMode.dark : ThemeMode.light);
 }
 
+
 final createTicketProvider = Provider<CreateTicket>((ref) => CreateTicket(ref.watch(ticketRepositoryProvider)));
 final updateTicketStatusProvider =
     Provider<UpdateTicketStatus>((ref) => UpdateTicketStatus(ref.watch(ticketRepositoryProvider)));
