@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sistema_tickets_edis/app/providers.dart';
 import 'package:sistema_tickets_edis/core/errors/failure.dart';
 import 'package:sistema_tickets_edis/domain/entities/alta_document_result.dart';
+import 'package:sistema_tickets_edis/domain/entities/session_user.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket_event.dart';
 import 'package:sistema_tickets_edis/domain/entities/technician.dart';
@@ -14,6 +15,7 @@ import 'package:sistema_tickets_edis/domain/usecases/add_ticket_comment.dart';
 import 'package:sistema_tickets_edis/domain/usecases/assign_technician.dart';
 import 'package:sistema_tickets_edis/domain/usecases/generate_rm_fg_documents.dart';
 import 'package:sistema_tickets_edis/domain/usecases/update_ticket_status.dart';
+import 'package:sistema_tickets_edis/domain/value_objects/ticket_filters.dart';
 
 final ticketDetailControllerProvider = StateNotifierProvider.autoDispose
     .family<TicketDetailController, TicketDetailState, int>((ref, ticketId) {
@@ -28,6 +30,7 @@ final ticketDetailControllerProvider = StateNotifierProvider.autoDispose
   final GenerateRmFgDocuments generateRmFg = ref.watch(
     generateRmFgDocumentsProvider,
   );
+  final SessionUser? session = ref.watch(currentSessionProvider);
   return TicketDetailController(
     repository,
     updateStatus,
@@ -35,6 +38,7 @@ final ticketDetailControllerProvider = StateNotifierProvider.autoDispose
     addComment,
     generateRmFg,
     ticketId,
+    session,
   );
 });
 
@@ -70,6 +74,7 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
     this._addComment,
     this._generateRmFgDocuments,
     this._ticketId,
+    this._sessionUser,
   ) : super(const TicketDetailState()) {
     _init();
   }
@@ -80,6 +85,7 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
   final AddTicketComment _addComment;
   final GenerateRmFgDocuments _generateRmFgDocuments;
   final int _ticketId;
+  final SessionUser? _sessionUser;
   StreamSubscription<List<Ticket>>? _ticketSubscription;
   StreamSubscription<List<TicketEvent>>? _historySubscription;
 
@@ -90,26 +96,26 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
     );
     try {
       final Ticket? ticket = await _repository.findTicket(_ticketId);
-      if (ticket == null) {
+      if (ticket == null || !_hasAccess(ticket)) {
         state = state.copyWith(
           ticket: AsyncValue.error(
-            NotFoundFailure('Ticket $_ticketId no encontrado'),
+            NotFoundFailure('Ticket $_ticketId no disponible'),
             StackTrace.current,
           ),
         );
-      } else {
-        state = state.copyWith(ticket: AsyncValue.data(ticket));
+        return;
       }
+      state = state.copyWith(ticket: AsyncValue.data(ticket));
     } catch (error, stackTrace) {
       state = state.copyWith(ticket: AsyncValue.error(error, stackTrace));
     }
-    _ticketSubscription = _repository.watchTickets().listen((
+    _ticketSubscription = _repository.watchTickets(filter: _filterForSession()).listen((
       List<Ticket> tickets,
     ) {
       final Ticket? ticket = tickets.firstWhereOrNull(
         (Ticket element) => element.id == _ticketId,
       );
-      if (ticket != null) {
+      if (ticket != null && _hasAccess(ticket)) {
         state = state.copyWith(ticket: AsyncValue.data(ticket));
       }
     });
@@ -126,6 +132,9 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
     String author = 'Coordinador',
     String? comment,
   }) async {
+    if (!(_sessionUser?.role.isAdmin ?? false)) {
+      return;
+    }
     try {
       await _updateStatus(
         ticketId: _ticketId,
@@ -143,6 +152,9 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
     Technician technician, {
     String? comment,
   }) async {
+    if (!(_sessionUser?.role.isAdmin ?? false)) {
+      return;
+    }
     try {
       await _assignTechnician(
         ticketId: _ticketId,
@@ -160,6 +172,9 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
     String author = 'Usuario',
     Map<String, dynamic>? metadata,
   }) async {
+    if (!(_sessionUser?.role.isAdmin ?? false)) {
+      return;
+    }
     try {
       await _addComment(
         ticketId: _ticketId,
@@ -178,6 +193,20 @@ class TicketDetailController extends StateNotifier<TicketDetailState> {
 
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  TicketFilter _filterForSession() {
+    if (_sessionUser == null || _sessionUser!.role.isAdmin) {
+      return const TicketFilter();
+    }
+    return TicketFilter(requesterId: _sessionUser!.user.id);
+  }
+
+  bool _hasAccess(Ticket ticket) {
+    if (_sessionUser == null || _sessionUser!.role.isAdmin) {
+      return true;
+    }
+    return ticket.requester.id == _sessionUser!.user.id;
   }
 
   @override

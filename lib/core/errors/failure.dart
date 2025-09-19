@@ -29,3 +29,8 @@ class NotFoundFailure extends Failure {
 class PersistenceFailure extends Failure {
   const PersistenceFailure(String message, [Object? cause]) : super(message, cause);
 }
+
+/// Failure used for authentication or authorization errors.
+class AuthenticationFailure extends Failure {
+  const AuthenticationFailure(String message) : super(message);
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sistema_tickets_edis/app/app.dart';
 import 'package:sistema_tickets_edis/app/providers.dart';
@@ -13,6 +14,7 @@ Future<void> bootstrap() async {
   final LocalNotificationService notifications = LocalNotificationService();
   await notifications.initialize();
   final AltaDocumentService altaService = AltaDocumentService();
+  final SharedPreferences preferences = await SharedPreferences.getInstance();
 
   runApp(
     ProviderScope(
@@ -20,6 +22,7 @@ Future<void> bootstrap() async {
         appDatabaseProvider.overrideWithValue(database),
         localNotificationServiceProvider.overrideWithValue(notifications),
         altaDocumentServiceProvider.overrideWithValue(altaService),
+        sharedPreferencesProvider.overrideWithValue(preferences),
       ],
       child: const TicketSystemApp(),
     ),

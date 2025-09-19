@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:sistema_tickets_edis/app/providers.dart';
 import 'package:sistema_tickets_edis/domain/entities/catalog.dart';
+import 'package:sistema_tickets_edis/domain/entities/session_user.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 import 'package:sistema_tickets_edis/features/ticket_form/application/ticket_form_controller.dart';
 import 'package:sistema_tickets_edis/features/shared/presentation/widgets/error_card.dart';
@@ -64,6 +66,15 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
       ticketFormControllerProvider.notifier,
     );
     final ThemeData theme = Theme.of(context);
+    final SessionUser? session = ref.watch(currentSessionProvider);
+    final bool isAdmin = session?.role.isAdmin ?? false;
+    final bool useImplicitRequester = session?.role.isUser ?? false;
+    final bool showRequesterField = session == null || isAdmin;
+    if (isAdmin && session != null && _requesterController.text.isEmpty) {
+      _requesterController.text = session.user.name;
+    } else if (!showRequesterField && _requesterController.text.isNotEmpty) {
+      _requesterController.clear();
+    }
 
     return Scaffold(
       body: Form(
@@ -174,18 +185,78 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
                                   : null,
                             ),
                             const SizedBox(height: 20),
-                            TextFormField(
-                              controller: _requesterController,
-                              decoration: _inputDecoration(
-                                context,
-                                label: 'Nombre del solicitante',
-                                hint: 'Ej. Laura Martínez',
-                                icon: Icons.person_outline,
+                            if (showRequesterField)
+                              TextFormField(
+                                controller: _requesterController,
+                                decoration: _inputDecoration(
+                                  context,
+                                  label: 'Nombre del solicitante',
+                                  hint: 'Ej. Laura Martínez',
+                                  icon: Icons.person_outline,
+                                ),
+                                validator: (String? value) =>
+                                    (value == null || value.isEmpty)
+                                        ? 'Indica el solicitante'
+                                        : null,
+                              )
+                            else if (session != null)
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.secondaryContainer
+                                      .withOpacity(0.38),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Icon(
+                                      Icons.verified_user_outlined,
+                                      color: theme.colorScheme.onSecondaryContainer,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            session.user.name,
+                                            style: theme.textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color:
+                                                  theme.colorScheme.onSecondaryContainer,
+                                            ),
+                                          ),
+                                          if (session.user.email != null &&
+                                              session.user.email!.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 2),
+                                              child: Text(
+                                                session.user.email!,
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: theme
+                                                      .colorScheme.onSecondaryContainer
+                                                      .withOpacity(0.85),
+                                                ),
+                                              ),
+                                            ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            useImplicitRequester
+                                                ? 'Tus tickets quedarán asociados automáticamente a tu cuenta.'
+                                                : 'Creando ticket como parte del equipo de TI.',
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: theme
+                                                  .colorScheme.onSecondaryContainer
+                                                  .withOpacity(0.9),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              validator: (String? value) => (value == null || value.isEmpty)
-                                  ? 'Indica el solicitante'
-                                  : null,
-                            ),
                           ],
                         ),
                       ),
@@ -210,8 +281,9 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
         top: false,
         minimum: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         child: FilledButton.icon(
-          onPressed:
-              state.isSubmitting ? null : () => _handleSubmit(controller, state),
+          onPressed: state.isSubmitting
+              ? null
+              : () => _handleSubmit(controller, state, session, showRequesterField),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             textStyle: theme.textTheme.titleMedium?.copyWith(
@@ -377,6 +449,8 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
   Future<void> _handleSubmit(
     TicketFormController controller,
     TicketFormState state,
+    SessionUser? session,
+    bool showRequesterField,
   ) async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -409,8 +483,10 @@ class _TicketFormPageState extends ConsumerState<TicketFormPage> {
     await controller.submit(
       title: _titleController.text,
       description: _descriptionController.text,
-      requester: _requesterController.text,
+      requester: showRequesterField ? _requesterController.text : null,
+      requesterEmail: session?.user.email,
       altaDetails: altaDetails,
+      sessionUser: !showRequesterField ? session : null,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:sistema_tickets_edis/app/providers.dart';
 import 'package:sistema_tickets_edis/domain/entities/catalog.dart';
+import 'package:sistema_tickets_edis/domain/entities/session_user.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 import 'package:sistema_tickets_edis/domain/entities/user.dart';
 import 'package:sistema_tickets_edis/domain/usecases/create_ticket.dart';
@@ -60,21 +61,22 @@ class TicketFormController extends StateNotifier<TicketFormState> {
   Future<void> submit({
     required String title,
     required String description,
-    required String requester,
+    String? requester,
     String? requesterEmail,
     TicketAltaDetails? altaDetails,
+    SessionUser? sessionUser,
   }) async {
     state = state.copyWith(isSubmitting: true, errorMessage: null);
     try {
-      final String normalizedName = requester.trim();
-      final String? normalizedEmail =
-          requesterEmail != null && requesterEmail.trim().isNotEmpty
-              ? requesterEmail.trim()
-              : null;
+      final User requesterUser = _resolveRequester(
+        sessionUser: sessionUser,
+        requester: requester,
+        requesterEmail: requesterEmail,
+      );
       final TicketDraft draft = TicketDraft(
-        title: title,
-        description: description,
-        requester: User(id: 0, name: normalizedName, email: normalizedEmail),
+        title: title.trim(),
+        description: description.trim(),
+        requester: requesterUser,
         category: state.category,
         altaDetails: state.category == TicketCategory.altaNoParteRmFg
             ? altaDetails
@@ -92,5 +94,24 @@ class TicketFormController extends StateNotifier<TicketFormState> {
 
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  User _resolveRequester({
+    SessionUser? sessionUser,
+    String? requester,
+    String? requesterEmail,
+  }) {
+    if (sessionUser != null) {
+      return sessionUser.user;
+    }
+    final String normalizedName = (requester ?? '').trim();
+    final String? normalizedEmail =
+        requesterEmail != null && requesterEmail.trim().isNotEmpty
+            ? requesterEmail.trim()
+            : null;
+    if (normalizedName.isEmpty) {
+      throw ArgumentError('El solicitante es obligatorio.');
+    }
+    return User(id: 0, name: normalizedName, email: normalizedEmail);
   }
 }

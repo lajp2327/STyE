@@ -10,27 +10,32 @@ class TicketFilter extends Equatable {
     this.category,
     this.assignedTechnicianId,
     this.dateRange,
+    this.requesterId,
   });
 
   final TicketStatus? status;
   final TicketCategory? category;
   final int? assignedTechnicianId;
   final DateRange? dateRange;
+  final int? requesterId;
 
   TicketFilter copyWith({
     TicketStatus? status,
     TicketCategory? category,
     int? assignedTechnicianId,
     DateRange? dateRange,
+    int? requesterId,
   }) {
     return TicketFilter(
       status: status ?? this.status,
       category: category ?? this.category,
       assignedTechnicianId: assignedTechnicianId ?? this.assignedTechnicianId,
       dateRange: dateRange ?? this.dateRange,
+      requesterId: requesterId ?? this.requesterId,
     );
   }
 
   @override
-  List<Object?> get props => <Object?>[status, category, assignedTechnicianId, dateRange];
+  List<Object?> get props =>
+      <Object?>[status, category, assignedTechnicianId, dateRange, requesterId];
 }
