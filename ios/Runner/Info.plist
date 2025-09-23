@@ -43,7 +43,19 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
+        <key>UIApplicationSupportsIndirectInputEvents</key>
+        <true/>
+        <!-- Configuración de URL Schemes para flutter_appauth. Ajusta el scheme al de AuthConfig.redirectUriIos -->
+        <key>CFBundleURLTypes</key>
+        <array>
+                <dict>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>com.example.app</string>
+                        </array>
+                        <key>CFBundleURLName</key>
+                        <string>auth</string>
+                </dict>
+        </array>
 </dict>
 </plist>
