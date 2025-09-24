@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:sistema_tickets_edis/core/notifications/local_notification_service.dart';
+import 'package:sistema_tickets_edis/core/notifications/notification_service.dart';
 import 'package:sistema_tickets_edis/core/pdf/alta_document_service.dart';
 import 'package:sistema_tickets_edis/data/local/database/app_database.dart';
 import 'package:sistema_tickets_edis/data/repositories/auth_repository_impl.dart';
@@ -22,8 +22,8 @@ final appDatabaseProvider = Provider<AppDatabase>((ProviderRef<AppDatabase> ref)
   throw UnimplementedError('AppDatabase debe inyectarse desde bootstrap.');
 });
 
-final localNotificationServiceProvider = Provider<LocalNotificationService>((ref) {
-  throw UnimplementedError('LocalNotificationService debe inyectarse desde bootstrap.');
+final localNotificationServiceProvider = Provider<NotificationService>((ref) {
+  throw UnimplementedError('NotificationService debe inyectarse desde bootstrap.');
 });
 
 final altaDocumentServiceProvider = Provider<AltaDocumentService>((ref) {
@@ -47,7 +47,7 @@ final ticketWorkflowServiceProvider = Provider<TicketWorkflowService>((ref) {
 final ticketRepositoryProvider = Provider<TicketRepository>((ref) {
   final AppDatabase database = ref.watch(appDatabaseProvider);
   final TicketWorkflowService workflow = ref.watch(ticketWorkflowServiceProvider);
-  final LocalNotificationService notifications = ref.watch(localNotificationServiceProvider);
+  final NotificationService notifications = ref.watch(localNotificationServiceProvider);
   final AltaDocumentService altaService = ref.watch(altaDocumentServiceProvider);
   return TicketRepositoryImpl(
     database: database,

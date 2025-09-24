@@ -129,7 +129,7 @@ class _TicketDetailPageState extends ConsumerState<TicketDetailPage> {
         return;
       }
       _showBanner(
-        'Documentos generados: PDF ${result.pdfPath.split('/').last}',
+        'Documentos generados: PDF ${result.pdf.fileName}',
         isError: false,
       );
     } catch (error) {

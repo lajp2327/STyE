@@ -5,14 +5,17 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket_event.dart';
 
+import 'notification_service.dart';
+
 /// Wrapper around [FlutterLocalNotificationsPlugin] with domain-specific helpers.
-class LocalNotificationService {
+class LocalNotificationService implements NotificationService {
   LocalNotificationService([FlutterLocalNotificationsPlugin? plugin])
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
   Future<void> Function(String token)? onFcmToken;
 
+  @override
   Future<void> initialize() async {
     tz_data.initializeTimeZones();
     const AndroidInitializationSettings androidSettings =
@@ -44,6 +47,7 @@ class LocalNotificationService {
     return const NotificationDetails(android: androidDetails, iOS: iosDetails);
   }
 
+  @override
   Future<void> showTicketCreated(Ticket ticket) {
     return _plugin.show(
       ticket.id,
@@ -53,6 +57,7 @@ class LocalNotificationService {
     );
   }
 
+  @override
   Future<void> showStatusChanged(Ticket ticket, TicketEvent event) {
     return _plugin.show(
       ticket.id * 100,
@@ -62,6 +67,7 @@ class LocalNotificationService {
     );
   }
 
+  @override
   Future<void> showAssignment(Ticket ticket, String technicianName) {
     return _plugin.show(
       ticket.id * 200,
@@ -71,6 +77,7 @@ class LocalNotificationService {
     );
   }
 
+  @override
   Future<void> scheduleReminder({
     required int ticketId,
     required DateTime when,
@@ -91,6 +98,7 @@ class LocalNotificationService {
   }
 
   /// Stores a callback that will be triggered when an FCM token is available.
+  @override
   void registerFcmTokenHandler(Future<void> Function(String token) handler) {
     onFcmToken = handler;
   }
