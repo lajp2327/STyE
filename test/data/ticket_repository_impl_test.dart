@@ -1,13 +1,13 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:drift/native.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sistema_tickets_edis/core/errors/failure.dart';
-import 'package:sistema_tickets_edis/core/notifications/local_notification_service.dart';
+import 'package:sistema_tickets_edis/core/notifications/notification_service.dart';
 import 'package:sistema_tickets_edis/core/pdf/alta_document_service.dart';
+import 'package:sistema_tickets_edis/core/pdf/storage/alta_document_storage.dart';
 import 'package:sistema_tickets_edis/data/local/database/app_database.dart';
 import 'package:sistema_tickets_edis/data/repositories/ticket_repository_impl.dart';
 import 'package:sistema_tickets_edis/domain/entities/alta_document_result.dart';
@@ -21,9 +21,7 @@ import 'package:sistema_tickets_edis/domain/services/ticket_workflow_service.dar
 
 import '../fixtures/user_fixtures.dart';
 
-class FakeLocalNotificationService extends LocalNotificationService {
-  FakeLocalNotificationService() : super(FlutterLocalNotificationsPlugin());
-
+class FakeNotificationService implements NotificationService {
   @override
   Future<void> initialize() async {}
 
@@ -42,34 +40,54 @@ class FakeLocalNotificationService extends LocalNotificationService {
     required DateTime when,
     String? message,
   }) async {}
+
+  @override
+  void registerFcmTokenHandler(Future<void> Function(String token) handler) {}
 }
 
 class FakeAltaDocumentService extends AltaDocumentService {
   FakeAltaDocumentService()
-    : super(
-        directoryBuilder: () async =>
-            await Directory.systemTemp.createTemp('alta_test'),
-      );
+      : super(storage: _FakeAltaDocumentStorage());
 
   @override
   Future<AltaDocumentResult> generateRmFgDocuments(Ticket ticket) async {
     return AltaDocumentResult(
-      pdfPath: '/tmp/${ticket.folio}.pdf',
-      csvPath: '/tmp/${ticket.folio}.csv',
+      pdf: AltaDocumentArtifact(
+        reference: '/tmp/${ticket.folio}.pdf',
+        fileName: '${ticket.folio}.pdf',
+        mimeType: 'application/pdf',
+      ),
+      csv: AltaDocumentArtifact(
+        reference: '/tmp/${ticket.folio}.csv',
+        fileName: '${ticket.folio}.csv',
+        mimeType: 'text/csv',
+      ),
     );
+  }
+}
+
+class _FakeAltaDocumentStorage implements AltaDocumentStorage {
+  @override
+  Future<AltaDocumentResult> save({
+    required Ticket ticket,
+    required String baseName,
+    required Uint8List pdfBytes,
+    required String csvData,
+  }) async {
+    throw UnimplementedError();
   }
 }
 
 void main() {
   late AppDatabase database;
   late TicketRepository repository;
-  late FakeLocalNotificationService notifications;
+  late FakeNotificationService notifications;
   late FakeAltaDocumentService altaDocuments;
   late TicketWorkflowService workflow;
 
   setUp(() {
     database = AppDatabase(executor: NativeDatabase.memory());
-    notifications = FakeLocalNotificationService();
+    notifications = FakeNotificationService();
     altaDocuments = FakeAltaDocumentService();
     workflow = TicketWorkflowService();
     repository = TicketRepositoryImpl(
@@ -173,7 +191,7 @@ void main() {
     final AltaDocumentResult result = await repository.generateAltaDocuments(
       ticket.id,
     );
-    expect(result.pdfPath, contains('.pdf'));
+    expect(result.pdf.reference, contains('.pdf'));
 
     final List<TicketEvent> history = await repository
         .watchTicketHistory(ticket.id)

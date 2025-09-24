@@ -1,35 +1,15 @@
 // lib/data/local/database/app_database.dart
-import 'dart:async';
-import 'dart:io';
-
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'package:sistema_tickets_edis/domain/entities/catalog.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket_event.dart';
 import 'package:sistema_tickets_edis/domain/entities/technician.dart';
 import 'package:sistema_tickets_edis/domain/entities/user.dart';
 
-part 'app_database.g.dart';
+import 'connection/connection_factory.dart';
 
-/// Conexión perezosa a SQLite
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    try {
-      final Directory dir = await getApplicationDocumentsDirectory();
-      final File file = File(p.join(dir.path, 'tickets.db'));
-      return NativeDatabase(file);
-    } catch (_) {
-      final Directory temp =
-          await Directory.systemTemp.createTemp('tickets_db');
-      final File file = File(p.join(temp.path, 'tickets.db'));
-      return NativeDatabase(file);
-    }
-  });
-}
+part 'app_database.g.dart';
 
 /// ========================
 /// Tablas Drift (fuente)
@@ -140,7 +120,8 @@ class DmfExports extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase({QueryExecutor? executor}) : super(executor ?? _openConnection());
+  AppDatabase({QueryExecutor? executor})
+      : super(executor ?? createDriftExecutor());
 
   @override
   int get schemaVersion => 1;

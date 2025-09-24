@@ -1,43 +1,26 @@
-import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'package:sistema_tickets_edis/core/errors/failure.dart';
 import 'package:sistema_tickets_edis/core/pdf/dmf_mapping.dart';
+import 'package:sistema_tickets_edis/core/pdf/storage/alta_document_storage.dart';
 import 'package:sistema_tickets_edis/domain/entities/alta_document_result.dart';
 import 'package:sistema_tickets_edis/domain/entities/ticket.dart';
 
 /// Service responsible for generating PDF/CSV artifacts for RM/FG tickets.
 class AltaDocumentService {
   AltaDocumentService({
-    Future<Directory> Function()? directoryBuilder,
+    AltaDocumentStorage? storage,
     DmfMapping? mapping,
-  }) : _directoryBuilder = directoryBuilder ?? _defaultDirectoryBuilder,
-       _mapping = mapping ?? const DmfMapping();
+  })  : _storage = storage ?? createAltaDocumentStorage(),
+        _mapping = mapping ?? const DmfMapping();
 
-  final Future<Directory> Function() _directoryBuilder;
+  final AltaDocumentStorage _storage;
   final DmfMapping _mapping;
-
-  static Future<Directory> _defaultDirectoryBuilder() async {
-    try {
-      final Directory base = await getApplicationDocumentsDirectory();
-      final Directory target = Directory(p.join(base.path, 'rm_fg_docs'));
-      if (!await target.exists()) {
-        await target.create(recursive: true);
-      }
-      return target;
-    } catch (_) {
-      final Directory fallback = await Directory.systemTemp.createTemp(
-        'rm_fg_docs',
-      );
-      return fallback;
-    }
-  }
 
   Future<AltaDocumentResult> generateRmFgDocuments(Ticket ticket) async {
     if (!ticket.isAltaRmFg || ticket.altaDetails == null) {
@@ -45,21 +28,25 @@ class AltaDocumentService {
         'El ticket no contiene información RM/FG.',
       );
     }
-    final Directory directory = await _directoryBuilder();
+
     final String sanitized = ticket.folio.replaceAll(
       RegExp('[^A-Za-z0-9_-]'),
       '_',
     );
-    final String pdfPath = p.join(directory.path, '${sanitized}_rmfg.pdf');
-    final String csvPath = p.join(directory.path, '${sanitized}_rmfg.csv');
+    final String baseName = '${sanitized}_rmfg';
 
-    await _generatePdf(ticket, pdfPath);
-    await _generateCsv(ticket, csvPath);
+    final Uint8List pdfBytes = await _generatePdf(ticket);
+    final String csvData = _generateCsv(ticket);
 
-    return AltaDocumentResult(pdfPath: pdfPath, csvPath: csvPath);
+    return _storage.save(
+      ticket: ticket,
+      baseName: baseName,
+      pdfBytes: pdfBytes,
+      csvData: csvData,
+    );
   }
 
-  Future<void> _generatePdf(Ticket ticket, String path) async {
+  Future<Uint8List> _generatePdf(Ticket ticket) async {
     final TicketAltaDetails details = ticket.altaDetails!;
     final pw.Document doc = pw.Document();
     doc.addPage(
@@ -134,17 +121,14 @@ class AltaDocumentService {
         ],
       ),
     );
-    final File file = File(path);
-    await file.writeAsBytes(await doc.save());
+    return Uint8List.fromList(await doc.save());
   }
 
-  Future<void> _generateCsv(Ticket ticket, String path) async {
+  String _generateCsv(Ticket ticket) {
     final List<List<String>> rows = <List<String>>[
       List<String>.from(_mapping.headers),
       _mapping.toRow(ticket),
     ];
-    final String csvData = const ListToCsvConverter().convert(rows);
-    final File file = File(path);
-    await file.writeAsString(csvData);
+    return const ListToCsvConverter().convert(rows);
   }
 }

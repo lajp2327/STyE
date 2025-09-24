@@ -290,6 +290,8 @@ class _ExamplePageState extends State<ExamplePage> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
+    final bool isPreview = widget.dataverseApi.isPreview;
+
     final Widget listContent = _isLoadingTickets && _tickets.isEmpty
         ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
@@ -298,6 +300,22 @@ class _ExamplePageState extends State<ExamplePage> {
               padding: const EdgeInsets.all(16),
               physics: const AlwaysScrollableScrollPhysics(),
               children: <Widget>[
+                if (isPreview)
+                  Card(
+                    color: theme.colorScheme.surfaceVariant,
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.visibility_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: const Text('Modo demo sin conexión'),
+                      subtitle: const Text(
+                        'Los tickets se almacenan solo en memoria y no se '
+                        'envían a Dataverse. Compila sin WEB_PREVIEW para '
+                        'usar la integración real.',
+                      ),
+                    ),
+                  ),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
