@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/auth_config.dart';
+import '../config/preview_config.dart';
 import '../models/ticket.dart';
 import 'auth_service.dart';
 
@@ -10,11 +11,28 @@ class DataverseApi {
   DataverseApi({
     AuthService? authService,
     http.Client? httpClient,
+    List<Ticket>? previewSeed,
+    bool? previewMode,
   })  : _authService = authService ?? AuthService(),
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client(),
+        _previewMode =
+            previewMode ?? (authService?.isPreview ?? false) || kUsePreviewBackend,
+        _previewTickets = <Ticket>[],
+        _previewSequence = 0 {
+    if (_previewMode) {
+      final Iterable<Ticket> seed = previewSeed ?? _defaultPreviewTickets;
+      _previewTickets.addAll(List<Ticket>.of(seed));
+      _previewSequence = _previewTickets.length;
+    }
+  }
 
   final AuthService _authService;
   final http.Client _httpClient;
+  final bool _previewMode;
+  final List<Ticket> _previewTickets;
+  int _previewSequence;
+
+  bool get isPreview => _previewMode;
 
   static Uri get _collectionUri =>
       Uri.parse('${AuthConfig.organizationHost}/api/data/v9.2/new_tickets');
@@ -24,6 +42,10 @@ class DataverseApi {
     String? filter,
     String? orderBy,
   }) async {
+    if (_previewMode) {
+      return _previewTickets.take(top).toList();
+    }
+
     final List<Ticket> tickets = <Ticket>[];
     Uri? requestUri = _buildListUri(top: top, filter: filter, orderBy: orderBy);
 
@@ -54,6 +76,17 @@ class DataverseApi {
     required String priority,
     required String status,
   }) async {
+    if (_previewMode) {
+      final Ticket ticket = Ticket(
+        id: _generatePreviewId(),
+        title: title,
+        priority: priority,
+        status: status,
+      );
+      _previewTickets.insert(0, ticket);
+      return ticket;
+    }
+
     final String token = await _authService.getAccessToken();
     final http.Response response = await _httpClient.post(
       _collectionUri,
@@ -89,6 +122,25 @@ class DataverseApi {
     String? priority,
     String? status,
   }) async {
+    if (_previewMode) {
+      final int index =
+          _previewTickets.indexWhere((Ticket ticket) => ticket.id == id);
+      if (index == -1) {
+        throw DataverseApiException(
+          'No se encontró el ticket $id en el modo preview.',
+        );
+      }
+
+      final Ticket current = _previewTickets[index];
+      final Ticket updated = current.copyWith(
+        title: title?.isNotEmpty == true ? title : null,
+        priority: priority?.isNotEmpty == true ? priority : null,
+        status: status?.isNotEmpty == true ? status : null,
+      );
+      _previewTickets[index] = updated;
+      return;
+    }
+
     final Map<String, dynamic> updates = <String, dynamic>{};
     if (title != null) {
       updates['new_title'] = title;
@@ -116,6 +168,17 @@ class DataverseApi {
   }
 
   Future<void> deleteTicket(String id) async {
+    if (_previewMode) {
+      final int removed =
+          _previewTickets.removeWhere((Ticket ticket) => ticket.id == id);
+      if (removed == 0) {
+        throw DataverseApiException(
+          'No se pudo eliminar el ticket $id en modo preview.',
+        );
+      }
+      return;
+    }
+
     final String token = await _authService.getAccessToken();
     final Uri resourceUri = _ticketUri(id);
     final http.Response response = await _httpClient.delete(
@@ -129,6 +192,27 @@ class DataverseApi {
   void dispose() {
     _httpClient.close();
   }
+
+  static const List<Ticket> _defaultPreviewTickets = <Ticket>[
+    Ticket(
+      id: 'preview-1',
+      title: 'Demo: seguimiento de incidente',
+      priority: 'Alta',
+      status: 'Abierto',
+    ),
+    Ticket(
+      id: 'preview-2',
+      title: 'Demo: revisión de equipo',
+      priority: 'Media',
+      status: 'En progreso',
+    ),
+    Ticket(
+      id: 'preview-3',
+      title: 'Demo: seguimiento preventivo',
+      priority: 'Baja',
+      status: 'Cerrado',
+    ),
+  ];
 
   Uri _buildListUri({
     required int top,
@@ -224,6 +308,13 @@ class DataverseApi {
         RegExp(r'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})')
             .firstMatch(entityId);
     return match?.group(1);
+  }
+
+  String _generatePreviewId() {
+    _previewSequence++;
+    final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+    final String sequence = _previewSequence.toString().padLeft(3, '0');
+    return 'preview-$timestamp-$sequence';
   }
 }
 

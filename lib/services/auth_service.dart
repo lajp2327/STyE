@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_appauth/flutter_appauth.dart';
 
 import '../config/auth_config.dart';
+import '../config/preview_config.dart';
 import 'token_store/token_store.dart';
 import 'web_auth/web_auth_client.dart';
 
@@ -11,22 +12,37 @@ class AuthService {
     TokenStore? tokenStore,
     WebAuthClient? webAuthClient,
     DateTime Function()? now,
-  })  : _appAuth = kIsWeb ? null : (appAuth ?? const FlutterAppAuth()),
+    bool? previewMode,
+  })  : _previewMode = previewMode ?? kUsePreviewBackend,
+        _appAuth = kIsWeb ? null : (appAuth ?? const FlutterAppAuth()),
         _tokenStore = tokenStore ?? createTokenStore(),
-        _webAuthClient = kIsWeb ? (webAuthClient ?? createWebAuthClient()) : null,
+        _webAuthClient =
+            kIsWeb && !(previewMode ?? kUsePreviewBackend)
+                ? (webAuthClient ?? createWebAuthClient())
+                : null,
         _now = now ?? DateTime.now;
 
   final FlutterAppAuth? _appAuth;
   final TokenStore _tokenStore;
   final WebAuthClient? _webAuthClient;
   final DateTime Function() _now;
+  final bool _previewMode;
+
+  bool _previewSessionSeeded = false;
 
   static const String _accessTokenKey = 'auth_access_token';
   static const String _refreshTokenKey = 'auth_refresh_token';
   static const String _expiryKey = 'auth_access_token_expiry';
   static const String _accountIdKey = 'auth_account_id';
 
+  bool get isPreview => _previewMode;
+
   Future<void> login() async {
+    if (_previewMode) {
+      await _ensurePreviewSession();
+      return;
+    }
+
     if (kIsWeb) {
       final WebAuthClient client = _requireWebClient();
       try {
@@ -86,6 +102,10 @@ class AuthService {
   }
 
   Future<void> refreshIfNeeded() async {
+    if (_previewMode) {
+      return;
+    }
+
     final DateTime? expiry = await _readExpiry();
     if (expiry == null) {
       return;
@@ -104,6 +124,10 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    if (_previewMode) {
+      _previewSessionSeeded = false;
+    }
+
     if (kIsWeb) {
       final String? accountId = await _tokenStore.read(_accountIdKey);
       try {
@@ -119,6 +143,12 @@ class AuthService {
   }
 
   Future<String> getAccessToken() async {
+    if (_previewMode) {
+      await _ensurePreviewSession();
+      final String? stored = await _tokenStore.read(_accessTokenKey);
+      return stored ?? _previewAccessToken;
+    }
+
     await refreshIfNeeded();
     String? accessToken = await _tokenStore.read(_accessTokenKey);
 
@@ -134,6 +164,11 @@ class AuthService {
   }
 
   Future<bool> hasValidSession() async {
+    if (_previewMode) {
+      await _ensurePreviewSession();
+      return true;
+    }
+
     final String? accessToken = await _tokenStore.read(_accessTokenKey);
     final DateTime? expiry = await _readExpiry();
 
@@ -227,6 +262,12 @@ class AuthService {
   }
 
   Future<void> _refreshWebToken() async {
+    if (_previewMode) {
+      throw const AuthException(
+        'La autenticación web no está disponible en modo preview.',
+      );
+    }
+
     final WebAuthClient client = _requireWebClient();
     final String? accountId = await _tokenStore.read(_accountIdKey);
     if (accountId == null || accountId.isEmpty) {
@@ -284,6 +325,28 @@ class AuthService {
       return null;
     }
   }
+
+  Future<void> _ensurePreviewSession() async {
+    if (!_previewMode) {
+      return;
+    }
+    if (_previewSessionSeeded) {
+      return;
+    }
+
+    final DateTime expiry = _now().toUtc().add(const Duration(days: 30));
+    await _persistTokens(
+      accessToken: _previewAccessToken,
+      refreshToken: _previewRefreshToken,
+      expiry: expiry,
+      accountId: _previewAccountId,
+    );
+    _previewSessionSeeded = true;
+  }
+
+  static const String _previewAccessToken = 'preview-access-token';
+  static const String _previewRefreshToken = 'preview-refresh-token';
+  static const String _previewAccountId = 'preview-account';
 
   FlutterAppAuth _requireAppAuth() {
     final FlutterAppAuth? appAuth = _appAuth;
