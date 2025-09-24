@@ -6,7 +6,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:uuid/uuid.dart';
 
 import 'package:sistema_tickets_edis/core/errors/failure.dart';
-import 'package:sistema_tickets_edis/core/notifications/local_notification_service.dart';
+import 'package:sistema_tickets_edis/core/notifications/notification_service.dart';
 import 'package:sistema_tickets_edis/core/pdf/alta_document_service.dart';
 import 'package:sistema_tickets_edis/data/local/database/app_database.dart';
 import 'package:sistema_tickets_edis/domain/entities/alta_document_result.dart';
@@ -24,7 +24,7 @@ class TicketRepositoryImpl implements TicketRepository {
   TicketRepositoryImpl({
     required AppDatabase database,
     required TicketWorkflowService workflowService,
-    required LocalNotificationService notificationService,
+    required NotificationService notificationService,
     required AltaDocumentService altaDocumentService,
   }) : _database = database,
        _workflowService = workflowService,
@@ -34,7 +34,7 @@ class TicketRepositoryImpl implements TicketRepository {
 
   final AppDatabase _database;
   final TicketWorkflowService _workflowService;
-  final LocalNotificationService _notificationService;
+  final NotificationService _notificationService;
   final AltaDocumentService _altaDocumentService;
   final TicketDao _dao;
   final Uuid _uuid = const Uuid();
@@ -234,8 +234,8 @@ class TicketRepositoryImpl implements TicketRepository {
         .generateRmFgDocuments(ticket);
     await _dao.insertDmfExport(
       ticketId: ticketId,
-      pdfPath: result.pdfPath,
-      csvPath: result.csvPath,
+      pdfPath: result.pdf.reference,
+      csvPath: result.csv.reference,
     );
     await _dao.insertEvent(
       TicketEventsCompanion.insert(
@@ -245,8 +245,8 @@ class TicketRepositoryImpl implements TicketRepository {
         message: 'Documentos RM/FG generados',
         metadataJson: Value<String>(
           jsonEncode(<String, dynamic>{
-            'pdfPath': result.pdfPath,
-            'csvPath': result.csvPath,
+            'pdfReference': result.pdf.reference,
+            'csvReference': result.csv.reference,
           }),
         ),
       ),

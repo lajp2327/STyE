@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 /// - [organizationHost]: URL base de Dataverse (termina con .crm.dynamics.com).
 /// - [redirectUriAndroid] y [redirectUriIos]: deben coincidir con los Redirect URIs
 ///   configurados en el registro de la app.
+/// - [redirectUriWeb]: URI registrada para builds web (https://tuapp.com/auth).
 /// - [scopes]: incluye `.default` del recurso Dataverse y los scopes básicos.
 class AuthConfig {
   const AuthConfig._();
@@ -17,6 +18,7 @@ class AuthConfig {
   static const String organizationHost = 'https://<ORG>.crm.dynamics.com';
   static const String redirectUriAndroid = 'com.example.app:/oauthredirect';
   static const String redirectUriIos = 'com.example.app:/oauthredirect';
+  static const String redirectUriWeb = 'http://localhost:8080';
 
   /// Incluye `.default` para Dataverse y `offline_access` para refresh tokens.
   static const List<String> scopes = <String>[
@@ -37,15 +39,13 @@ class AuthConfig {
   static String get tokenEndpoint =>
       _tokenEndpointTemplate.replaceFirst('<TENANT_ID>', tenantId);
 
+  static String get authority =>
+      'https://login.microsoftonline.com/$tenantId';
+
   /// Devuelve el redirect URI correcto según la plataforma actual.
-  ///
-  /// Para Web se debe usar MSAL (msal-browser) o implementar un flujo PKCE
-  /// manual; `flutter_appauth` no soporta Web.
   static String redirectUriForPlatform() {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'TODO: usar MSAL (msal-browser) o un flujo PKCE manual para Web.',
-      );
+      return redirectUriWeb;
     }
 
     switch (defaultTargetPlatform) {

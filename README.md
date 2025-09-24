@@ -1,16 +1,21 @@
-# sistema_tickets_edis
+# Sistema Tickets y EDIs
 
-A new Flutter project.
+Demo en Flutter para autenticarse contra Azure AD y consumir Dataverse.
 
-## Getting Started
+## Modo demo web sin conexión
 
-This project is a starting point for a Flutter application.
+Puedes navegar por la interfaz sin configurar Azure ni Dataverse compilando con el flag `WEB_PREVIEW`:
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter run -d chrome --dart-define=WEB_PREVIEW=true
+# o bien
+flutter build web --dart-define=WEB_PREVIEW=true
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+En este modo:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- La pantalla principal se muestra sin requerir login con Azure AD.
+- Los tickets se almacenan en memoria local (no se envían a Dataverse).
+- Puedes crear, editar y eliminar tickets de demostración para validar el flujo UI.
+
+Compila sin el flag para restaurar la integración real con Azure AD + Dataverse.
