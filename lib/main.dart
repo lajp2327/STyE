@@ -199,7 +199,8 @@ class _AuthGuardState extends State<AuthGuard> {
                     padding: EdgeInsets.all(16),
                     child: Text(
                       'TODO Web: integra MSAL (msal-browser) o implementa un flujo PKCE manual. '
-                      'flutter_appauth no soporta Web.',
+                      'flutter_appauth no soporta Web. También puedes compilar con '
+                      '--dart-define=WEB_PREVIEW=true para navegar en modo demo sin conexión.',
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -223,8 +224,7 @@ class _AuthGuardState extends State<AuthGuard> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Recuerda conceder permisos “Admin consent” al scope '.
-                'https://<ORG>.crm.dynamics.com/.default.',
+                "Recuerda conceder permisos “Admin consent” al scope https://<ORG>.crm.dynamics.com/.default.",
                 textAlign: TextAlign.center,
               ),
             ],
