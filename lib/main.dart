@@ -223,8 +223,7 @@ class _AuthGuardState extends State<AuthGuard> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Recuerda conceder permisos “Admin consent” al scope '.
-                'https://<ORG>.crm.dynamics.com/.default.',
+                "Recuerda conceder permisos “Admin consent” al scope https://<ORG>.crm.dynamics.com/.default.",
                 textAlign: TextAlign.center,
               ),
             ],

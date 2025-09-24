@@ -10,25 +10,22 @@ class MsalWebAuthClient implements WebAuthClient {
   final msal.PublicClientApplication _application;
 
   static msal.PublicClientApplication _buildApplication() {
-    final msal.Configuration configuration = msal.Configuration(
-      auth: msal.BrowserAuthOptions(
-        clientId: AuthConfig.clientId,
-        authority: AuthConfig.authority,
-        redirectUri: AuthConfig.redirectUriWeb,
-      ),
-      cache: msal.CacheOptions(
-        cacheLocation: msal.BrowserCacheLocation.localStorage,
-        storeAuthStateInCookie: false,
-      ),
-    );
+    final msal.Configuration configuration = msal.Configuration()
+      ..auth = (msal.BrowserAuthOptions()
+        ..clientId = AuthConfig.clientId
+        ..authority = AuthConfig.authority
+        ..redirectUri = AuthConfig.redirectUriWeb)
+      ..cache = (msal.CacheOptions()
+        ..cacheLocation = msal.BrowserCacheLocation.localStorage
+        ..storeAuthStateInCookie = false);
     return msal.PublicClientApplication(configuration);
   }
 
   @override
   Future<WebAuthResult> login({required List<String> scopes}) async {
-    final msal.AuthenticationResult result = await _application.loginPopup(
-      msal.PopupRequest(scopes: scopes),
-    );
+    final msal.PopupRequest request = msal.PopupRequest()..scopes = scopes;
+    final msal.AuthenticationResult result =
+        await _application.loginPopup(request);
     return _mapResult(result);
   }
 
@@ -38,10 +35,9 @@ class MsalWebAuthClient implements WebAuthClient {
     String? accountId,
   }) async {
     final msal.AccountInfo? account = _resolveAccount(accountId);
-    final msal.SilentRequest request = msal.SilentRequest(
-      scopes: scopes,
-      account: account,
-    );
+    final msal.SilentRequest request = msal.SilentRequest()
+      ..scopes = scopes
+      ..account = account;
     final msal.AuthenticationResult result =
         await _application.acquireTokenSilent(request);
     return _mapResult(result);
@@ -50,7 +46,9 @@ class MsalWebAuthClient implements WebAuthClient {
   @override
   Future<void> logout({String? accountId}) async {
     final msal.AccountInfo? account = _resolveAccount(accountId);
-    await _application.logoutPopup(msal.EndSessionRequest(account: account));
+    final msal.EndSessionRequest request = msal.EndSessionRequest()
+      ..account = account;
+    await _application.logoutPopup(request);
   }
 
   WebAuthResult _mapResult(msal.AuthenticationResult result) {

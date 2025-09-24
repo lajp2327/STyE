@@ -22,6 +22,13 @@ class SecureTokenStore implements TokenStore {
   Future<void> delete(String key) {
     return _storage.delete(key: key);
   }
+
+  @override
+  Future<void> deleteAll(Iterable<String> keys) async {
+    for (final String key in keys) {
+      await _storage.delete(key: key);
+    }
+  }
 }
 
 TokenStore createTokenStoreImpl() => SecureTokenStore();

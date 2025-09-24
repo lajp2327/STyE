@@ -37,6 +37,14 @@ class WebTokenStore implements TokenStore {
   Future<void> delete(String key) async {
     _ensureStorage().remove(key);
   }
+
+  @override
+  Future<void> deleteAll(Iterable<String> keys) async {
+    final html.Storage storage = _ensureStorage();
+    for (final String key in keys) {
+      storage.remove(key);
+    }
+  }
 }
 
 TokenStore createTokenStoreImpl() => WebTokenStore();
